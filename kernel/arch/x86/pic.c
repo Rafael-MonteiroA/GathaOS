@@ -20,6 +20,14 @@ void pic_init(void) {
     command(0xa1, 0xff);
     klog("PIC: IRQ0-15 remapped to 32-47; only IRQ0 unmasked\r\n");
 }
+void pic_unmask(unsigned irq) {
+    if (irq >= 16) return;
+    uint32_t flags = irq_save();
+    uint16_t port = irq < 8 ? 0x21 : 0xa1;
+    outb(port, inb(port) & (uint8_t)~(1u << (irq % 8)));
+    if (irq >= 8) outb(0x21, inb(0x21) & (uint8_t)~4u);
+    irq_restore(flags);
+}
 int pic_is_spurious(unsigned irq) {
     if (irq == 7) {
         outb(0x20, 0x0b);

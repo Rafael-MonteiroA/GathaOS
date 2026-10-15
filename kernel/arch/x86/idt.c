@@ -2,6 +2,7 @@
 #include "pic.h"
 #include "pit.h"
 #include "drivers/serial.h"
+#include "drivers/input.h"
 #include "panic.h"
 struct idt_gate {
     uint16_t offset_low, selector;
@@ -44,6 +45,8 @@ void interrupt_dispatch(struct interrupt_frame *frame) {
             return;
         if (irq == 0)
             pit_interrupt();
+        else if (irq == 1 || irq == 12)
+            ps2_interrupt();
         else
             panic("UNEXPECTED IRQ", frame);
         pic_eoi(irq);

@@ -1,10 +1,11 @@
 # GathaOS
 
 GathaOS is an original, freestanding x86 operating system written in NASM and C.
-**Stage 2 — Memory Management** is implemented. The custom BIOS loader starts a
-higher-half kernel with a physical page allocator, paging, a growing kernel heap,
-exception diagnostics, a 100 Hz timer and COM1 logging. There is no Linux kernel,
-GRUB, hosted libc or external guest runtime. Stage 3 requires user approval.
+**Stage 3 — Graphics and Input Drivers** provides a graphical input test screen,
+double buffering, drawing primitives, an original bitmap font, PS/2 keyboard
+and mouse. Its own BIOS loader boots a higher-half kernel with paging, physical
+page allocation, a kernel heap, exceptions, a 100 Hz timer and COM1 logging.
+No Linux kernel, GRUB, hosted libc or external guest runtime is used.
 
 ## Build on Ubuntu / WSL2
 
@@ -15,92 +16,76 @@ make test
 make run
 ```
 
-Run from the repository root. The cross toolchain uses Clang with
-`--target=i686-elf`, LLD, LLVM objcopy, NASM, Python 3 and xorriso. `make` means
-`make iso`. The kernel uses original `libgatha` memcpy/memset implementations;
-host libraries are never linked into it. Scripts are invoked with `bash`.
+Run from the repository root. The tools are Clang (`--target=i686-elf`), LLD,
+LLVM objcopy, NASM, Python 3 and xorriso. `make` means `make iso`. The original
+`libgatha` implementations run freestanding. Prefer WSL's native filesystem:
+Windows/WSL clock skew on `/mnt/c` can produce Make timestamp warnings. Release
+builds run in a native temporary checkout, with verified copies returned here.
 
-Prefer WSL's native filesystem: Windows/WSL clock skew on `/mnt/c` can cause
-Make timestamp warnings. Release builds are verified in a temporary native
-checkout, then copied back and compared by hash. `make clean` removes `build/`
-and preserves every previous stage ISO in `dist/`. A changed ISO must use a new
-filename; an identical rebuild verifies the existing image without replacing it.
+`make clean` removes `build/` and preserves previous ISOs. Existing release files
+are immutable: an identical rebuild verifies them; different bytes require a
+fresh filename, such as `ISO=dist/gathaos-stage3-drivers-fix1.iso`.
 
-## Run
+## Run and use
 
 ```sh
-qemu-system-i386 -cdrom dist/gathaos-stage2-memory.iso -boot d -m 256M -vga std -serial stdio -no-reboot
+qemu-system-i386 -cdrom dist/gathaos-stage3-drivers.iso -boot d -m 256M -vga std -serial stdio -no-reboot
 ```
 
-This works in PowerShell with QEMU on PATH. WSL graphical runs need a display
-such as WSLg; automated tests are headless. No hard disk is required.
+This works in PowerShell with QEMU on PATH, or Ubuntu with a display. WSL graphical
+runs need WSLg or another display; automated tests run headless. No hard disk is
+required. Click inside QEMU to capture input; Ctrl+Alt releases the capture.
 
-The normal screen still shows the navy background, color bars and checkerboard.
-Memory work is visible in the serial console: E820 regions, usable frame counts,
-paging configuration, allocation test results, `MMTEST: ALL PASS`, continued
-PIT ticks and `STAGE2: PASS`. There is no desktop, mouse or keyboard input yet.
+Type into the large text area using a **US keyboard layout**. Enter, Backspace,
+Tab, Shift, Caps Lock, Ctrl+L (clear), wrapping and scrolling work. Hold a key to
+repeat. Move the mouse and press its left, middle and right buttons; the status
+indicators respond. This is a kernel driver demonstration; there is no desktop,
+window manager, file saving or user application yet. Stage 4 requires approval.
 
-VirtualBox / VMware manual settings: 32-bit Other OS, legacy BIOS, EFI disabled,
-256 MiB RAM, VGA-compatible graphics (VBoxVGA in VirtualBox), at least 8 MiB video
-RAM, 3D disabled, and the ISO in the boot optical drive. Those hypervisors remain
-unverified; QEMU standard VGA is the tested target.
+VirtualBox / VMware: Other 32-bit OS, legacy BIOS, EFI disabled, 256 MiB RAM,
+VGA-compatible graphics (VBoxVGA in VirtualBox), at least 8 MiB video RAM, 3D off,
+ISO attached to the boot optical drive, PS/2 keyboard/mouse and no disk. These
+hypervisors remain untested; QEMU standard VGA is the verified target.
 
-## Memory behavior
+## Tests
 
-- Physical allocator: 4 KiB pages and two bitmaps, based on E820. Firmware,
-  low memory, kernel/bootstrap structures and framebuffer storage are reserved.
-  At most 512 MiB of physical address space is managed; higher RAM is ignored.
-- Paging: 32-bit, 4 KiB supervisor pages; kernel code and stack execute above
-  0xC0000000. Low identity mappings and both null aliases are removed. Kernel
-  text/rodata are read-only with CR0.WP enabled. The framebuffer is mapped apart.
-- Heap: `kmalloc`/`kfree`, 16-byte alignment, first-fit splitting/coalescing,
-  64 KiB initially mapped, up to 16 MiB of virtual capacity. Growth maps physical
-  pages on demand; freeing trailing space returns pages down to the initial size.
-  Allocation failure returns NULL and rolls back partial growth.
-- Self-tests run on every boot before the PIT starts. See `docs/memory.md` for
-  contracts, limits and test details. These are single-CPU, kernel-only allocators.
+`make test` performs eight actual ISO boots:
 
-## Tests and deliberate faults
+1. Normal set-2 keyboard kernel with 256, 64 and 512 MiB RAM.
+2. Native set-1 keyboard kernel with 256 MiB RAM.
+3. Deliberate null-page write, read-only-page write, divide error and general
+   protection with 256 MiB RAM, behind separate `DEBUG_FAULT` options.
 
-`make test` performs seven actual ISO boots:
-
-1. Normal kernel with 256, 64 and 512 MiB RAM.
-2. Unmapped null write, read-only page write, divide error and general protection
-   with 256 MiB RAM, each behind its own `DEBUG_FAULT` compilation option.
-
-Every boot checks memory stress and accounting, timer/IRQ behavior, actual screen
-pixels and hardware paging state. Fault cases also check CPU error codes, CR2,
-EIP against linked symbols, register values and the final halted state. Evidence
-is saved under `build/test-<mode>-<RAM>/`.
+Every boot checks the existing memory stress suite, frame accounting, higher-half
+CPU state and timer/IRQ behavior. Normal boots additionally send real emulated
+keyboard and mouse events through QMP, verify typed text against display pixels,
+test repeat/release, scrolling, modifiers, three buttons, motion and edge clamps,
+and compare the full display after cursor movement to detect trails. Fault boots
+check register diagnostics and complete panic images. Evidence lives under
+`build/test-<mode>-<RAM>-set<1|2>/` with serial, QMP registers, PNG/PPM and JSON.
 
 ```sh
 make test-boot RAM=64
-make iso DEBUG_FAULT=page
-make run DEBUG_FAULT=page
+make test-boot PS2_SET=1 ISO=build/gathaos-set1.iso
+make run DEBUG_FAULT=page ISO=build/gathaos-page.iso
 ```
 
-The page demo ISO is `dist/gathaos-stage2-memory-page.iso`. It deliberately writes
-to address zero after the memory tests and 200 ticks, then shows a page-fault
-panic with vector 14, error 2 and CR2 zero. Restart the VM to repeat the demo.
-Other modes are `none` (default), `readonly`, `div0` and `gp`. Fault instructions
-are absent from the normal kernel, and each variant has separate build objects.
-The full test suite keeps readonly/div0/gp images in `build/`.
+Default keyboard set 2 and optional set 1 use separate build directories. Both
+disable controller translation and query the selected device set. The suite
+keeps auxiliary set-1/fault ISOs in `build/`. Normal kernels contain no deliberate
+fault instructions. Other fault choices are `readonly`, `div0` and `gp`.
 
-For a future approved bug fix, choose fresh release names:
+## Limits and documentation
 
-```sh
-make clean && make iso ISO=dist/gathaos-stage2-memory-fix1.iso
-make test ISO=dist/gathaos-stage2-memory-fix1.iso PAGE_ISO=dist/gathaos-stage2-memory-page-fix1.iso
-```
+The physical allocator manages up to 512 MiB; the heap can map up to 16 MiB.
+Non-PAE paging is supervisor-only. Boot memory tests run before the back buffer
+is allocated. The raw kernel payload limit is 64 KiB and bootstrap map is 4 MiB.
+Software buffering is not synchronized to vertical retrace; tearing is possible.
+PS/2 standard three-byte mouse and US printable ASCII are supported. There is no
+USB HID, wheel support, ABNT2, Unicode, text navigation or persistent editing.
 
-## Documentation and remaining scope
-
-Read `docs/stage-2-report.md`, `docs/memory.md`, `docs/memory-map.md`,
-`docs/boot-protocol.md` and `docs/interrupts.md`. Historical Stage 0/1 reports and
-ISOs remain available. `docs/panic-font-license.txt` records the original font's
-permission grant. The current 64 KiB loaded kernel payload limit remains.
-
-No scheduler, userspace, filesystem, general graphics toolkit or application is
-implemented. The existing panic text drawer is diagnostic only. Stage 3 will
-add graphics primitives, double buffering, keyboard and mouse support after
-explicit approval; those features have not been started.
+Read `docs/stage-3-report.md`, `docs/graphics-and-input.md`, `docs/memory.md`,
+`docs/memory-map.md`, `docs/boot-protocol.md` and `docs/interrupts.md`. Font and
+cursor permissions are in `docs/graphics-font-license.txt`; the panic font's
+permission is in `docs/panic-font-license.txt`. Previous reports and ISOs remain.
+Stage 4 (tasks, scheduler, syscalls, user mode and `.gex`) has not started.

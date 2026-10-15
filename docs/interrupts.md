@@ -9,7 +9,7 @@ clears IF on entry. NASM stubs normalize the stack: exceptions 8, 10-14, 17,
 21, 29 and 30 already have a CPU-pushed error code; all other vectors receive
 a synthetic zero. The stubs then push the vector number, general registers
 and data segment registers. Modern reserved exception numbers are accounted
-for, but only divide error and general protection have been deliberately tested.
+for; divide error, general protection and page faults have been deliberately tested.
 
 The C `interrupt_frame` layout, starting at offset zero:
 
@@ -32,7 +32,10 @@ EIP, CS and flags. Exceptions call `panic()` and never return.
 
 ## PIC and PIT
 
-The master 8259 is remapped to 0x20, the slave to 0x28. Only IRQ0 is unmasked.
+The master 8259 is remapped to 0x20, the slave to 0x28. Initially only IRQ0 is
+unmasked. Stage 3 enables IRQ1, IRQ12 and cascade IRQ2 after PS/2 setup. Their
+handlers enqueue bytes; decoding/rendering run in the main loop. Fault-demo
+builds retain only IRQ0.
 Real slave interrupts require slave EOI before master EOI. Spurious IRQ7 receives
 no EOI; spurious IRQ15 receives a master-only EOI. The spurious cases are
 implemented but have not been deliberately injected in tests.
@@ -45,8 +48,9 @@ idle main loop, not from the timer handler. The tick count wraps after about
 497 days; reporting uses unsigned modular comparison. Long-duration rollover
 has not been boot-tested.
 
-The idle loop tests the counter with IRQs disabled and uses `sti; hlt` together
-to avoid a lost wakeup. At boot an assembly probe sets seven known GPR values,
+The diagnostic idle loop tests the counter with IRQs disabled and uses `sti; hlt`
+to avoid a lost wakeup. The input loop wakes on IRQs or the next 10 ms timer tick,
+with presentation limited to 50 Hz. At boot an assembly probe sets known GPR values,
 CF and DF, then waits for an IRQ. It verifies that those values and IF survived
 the interrupt. DF is cleared before returning to C. No scheduler is present.
 

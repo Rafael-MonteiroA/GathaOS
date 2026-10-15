@@ -92,7 +92,9 @@ The normal and every debug boot run these checks before enabling the timer:
 
 `make test` runs normal kernels with 64, 256 and 512 MiB, plus page, readonly,
 divide and general-protection faults at 256 MiB. Each boot also checks the
-retained IRQ/timer functionality and every displayed pixel. For the QEMU PC
+retained IRQ/timer functionality and displayed graphics. Stage 3 also boots a
+native set-1 keyboard variant at 256 MiB and tests actual input; panic comparisons
+still check every displayed pixel. For the QEMU PC
 configuration, the host independently checks the usable-frame count against RAM,
 the kernel reservation end and the firmware's top 128 KiB reservation.
 

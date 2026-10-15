@@ -7,7 +7,10 @@
 #include "panic.h"
 #include "mm/memory.h"
 #include "../libgatha/memory.h"
+#include "drivers/input.h"
+#include "graphics_demo.h"
 static struct boot_info boot_state;
+#if DEBUG_FAULT != 0
 static uint32_t pixel_color(const struct boot_info *b, uint32_t rgb) {
     return (((rgb >> 16) & 255) << b->red_position) |
            (((rgb >> 8) & 255) << b->green_position) |
@@ -34,6 +37,7 @@ static void draw_pattern(const struct boot_info *b) {
         }
     }
 }
+#endif
 void kernel_main(const struct boot_info *b) {
     serial_init();
     klog("GathaOS booting...\r\n");
@@ -67,15 +71,24 @@ void kernel_main(const struct boot_info *b) {
     pmm_init(b);
     paging_init(&boot_state);
     panic_init(b);
+#if DEBUG_FAULT != 0
     draw_pattern(b);
+#endif
     heap_init();
     memory_self_test();
+#if DEBUG_FAULT == 0
+    graphics_demo_init(b);
+#endif
     pic_init();
     pit_init();
     if (!interrupt_probe() || pit_ticks() == 0)
         panic("IRQ REGISTER RESTORE FAILED", 0);
     klog("IRQ: register-and-flags preservation PASS\r\n");
     klog("STAGE2: TIMER RUNNING\r\n");
+#if DEBUG_FAULT == 0
+    ps2_init(b->width, b->height);
+    graphics_demo_run();
+#endif
     uint32_t next_report = 100;
     for (;;) {
         /* Test the counter with IRQs disabled, then atomically sleep with STI/HLT. */

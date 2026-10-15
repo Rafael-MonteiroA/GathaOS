@@ -1,4 +1,4 @@
-"""Boot Stage 2 ISOs; verify memory stress, paging, IRQs and actual display pixels."""
+"""Boot Stage 3 ISOs; verify memory, input, graphics and exception regressions."""
 import hashlib
 import json
 import os
@@ -11,6 +11,7 @@ import sys
 import tempfile
 import time
 import zlib
+from input_test import exercise
 
 
 def expected_pixel(x, y, width, height):
@@ -131,7 +132,8 @@ def main():
     ram = int(sys.argv[4])
     if fault not in ("none", "div0", "gp", "page", "readonly"):
         raise SystemExit("Invalid fault test mode")
-    evidence = Path(f"build/test-{fault}-{ram}").resolve()
+    scan_set = int(os.environ.get("PS2_SET", "2"))
+    evidence = Path(f"build/test-{fault}-{ram}-set{scan_set}").resolve()
     evidence.mkdir(parents=True, exist_ok=True)
     (evidence / "result.json").unlink(missing_ok=True)
     serial = evidence / "serial.log"
@@ -180,7 +182,7 @@ def main():
                 if list(tick_times) != expected_ticks:
                     raise RuntimeError(f"Unexpected tick progression: {list(tick_times)}")
                 if fault == "none":
-                    if "STAGE2: PASS" not in output or not 2.5 < tick_times[500] - tick_times[100] < 8:
+                    if "STAGE3: PASS" not in output or not 2.5 < tick_times[500] - tick_times[100] < 8:
                         raise RuntimeError("Timer cadence or success marker is invalid")
                 else:
                     reason = {"div0": "DIVIDE ERROR", "gp": "GENERAL PROTECTION",
@@ -221,9 +223,14 @@ def main():
                             if "return" in response:
                                 return response["return"]
                     request("qmp_capabilities")
-                    screenshot = evidence / "screen.ppm"
-                    request("screendump", {"filename": str(screenshot)})
-                    verify_screen(screenshot, width, height, output, fault)
+                    input_result = {}
+                    if fault == "none":
+                        input_result = exercise(request, evidence, serial, width, height, scan_set)
+                        output = serial.read_text()
+                    else:
+                        screenshot = evidence / "screen.ppm"
+                        request("screendump", {"filename": str(screenshot)})
+                        verify_screen(screenshot, width, height, output, fault)
                     registers = request("human-monitor-command", {"command-line": "info registers"})
                     (evidence / "cpu-registers.txt").write_text(registers)
                     cr0 = re.search(r"CR0=([0-9a-fA-F]+)", registers)
@@ -245,13 +252,14 @@ def main():
                 result = {"result": "PASS", "mode": fault, "ram_mib": ram, "iso": str(iso),
                           "sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                           "resolution": [width, height], "pixels_checked": width * height,
+                          "input_test": input_result,
                           "qemu": subprocess.check_output([qemu, "--version"], text=True).splitlines()[0],
                           "command": command, "serial": output, "exception_registers": fields,
                           "usable_frames": total, "final_free_frames": int(final[1]),
                           "tick_arrival_seconds": {str(t): round(v - tick_times[100], 3) for t, v in tick_times.items()}}
                 (evidence / "result.json").write_text(json.dumps(result, indent=2) + "\n")
                 print(output, end="")
-                print(f"SMOKE PASS ({fault}, {ram} MiB): memory stress, paging, IRQs and {width * height:,} screen pixels verified")
+                print(f"SMOKE PASS ({fault}, {ram} MiB, set {scan_set}): memory, IRQs, display and input/exception checks")
             finally:
                 if process.poll() is None:
                     process.terminate()

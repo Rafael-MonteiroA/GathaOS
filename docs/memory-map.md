@@ -1,4 +1,4 @@
-# Stage 2 memory map
+# Memory map — Stages 2 and 3
 
 ## Physical layout
 
@@ -54,3 +54,7 @@ Kernel GDT, IDT, bitmaps and page tables are statically reserved. The heap's
 physical pages are tracked by the PMM and return to it when trailing mappings
 are released. The bootstrap stack has no dedicated guard page or emergency
 fault stack. There is no userspace, swapping, PAE, NX or per-process address space.
+
+Stage 3 allocates a width * height * 4 RGB back buffer from the heap after memory
+tests complete (3 MiB at 1024x768). The front buffer remains in the VBE window.
+The input ring, text cells and cursor save area use static kernel BSS.

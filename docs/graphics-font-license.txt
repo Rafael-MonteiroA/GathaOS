@@ -1,0 +1,12 @@
+Gatha 8x16 bitmap font and Gatha cursor sprite
+Original artwork created for this project, 2026.
+
+Permission is granted to anyone to use, copy, modify, distribute and sublicense
+this artwork for any purpose, including commercial use, without restriction.
+The artwork is provided without warranty of any kind.
+
+The 95 printable ASCII cells use original 5x7 drawings centered horizontally
+and expanded vertically into 8x16 bitmap cells. Uppercase and digits extend
+the project's original panic font. Lowercase and punctuation were drawn for
+Stage 3. tools/make_font.py records every drawing; gui/gfx/font.h is generated
+and checked in. No third-party font or cursor data was imported.

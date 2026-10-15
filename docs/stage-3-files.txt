@@ -1,0 +1,181 @@
+gathaos/
+|-- Makefile
+|-- README.md
+|-- dist/
+|   |-- gathaos-stage3-drivers.iso
+|   |-- stage3-SHA256SUMS.txt
+|   |-- stage3-build-verification.log
+|   `-- stage3-evidence/
+|       |-- el-torito.txt
+|       |-- test-div0-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-gp-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-none-256-set1/
+|       |   |-- button-left.png
+|       |   |-- button-left.ppm
+|       |   |-- button-middle.png
+|       |   |-- button-middle.ppm
+|       |   |-- button-right.png
+|       |   |-- button-right.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- final.png
+|       |   |-- final.ppm
+|       |   |-- qemu.log
+|       |   |-- repeat.png
+|       |   |-- repeat.ppm
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- scrolled.png
+|       |   |-- scrolled.ppm
+|       |   |-- serial.log
+|       |   |-- typed.png
+|       |   `-- typed.ppm
+|       |-- test-none-256-set2/
+|       |   |-- button-left.png
+|       |   |-- button-left.ppm
+|       |   |-- button-middle.png
+|       |   |-- button-middle.ppm
+|       |   |-- button-right.png
+|       |   |-- button-right.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- elf.txt
+|       |   |-- final.png
+|       |   |-- final.ppm
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- repeat.png
+|       |   |-- repeat.ppm
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- scrolled.png
+|       |   |-- scrolled.ppm
+|       |   |-- serial.log
+|       |   |-- typed.png
+|       |   |-- typed.ppm
+|       |   `-- undefined-symbols.txt
+|       |-- test-none-512-set2/
+|       |   |-- button-left.png
+|       |   |-- button-left.ppm
+|       |   |-- button-middle.png
+|       |   |-- button-middle.ppm
+|       |   |-- button-right.png
+|       |   |-- button-right.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- final.png
+|       |   |-- final.ppm
+|       |   |-- qemu.log
+|       |   |-- repeat.png
+|       |   |-- repeat.ppm
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- scrolled.png
+|       |   |-- scrolled.ppm
+|       |   |-- serial.log
+|       |   |-- typed.png
+|       |   `-- typed.ppm
+|       |-- test-none-64-set2/
+|       |   |-- button-left.png
+|       |   |-- button-left.ppm
+|       |   |-- button-middle.png
+|       |   |-- button-middle.ppm
+|       |   |-- button-right.png
+|       |   |-- button-right.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- final.png
+|       |   |-- final.ppm
+|       |   |-- qemu.log
+|       |   |-- repeat.png
+|       |   |-- repeat.ppm
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- scrolled.png
+|       |   |-- scrolled.ppm
+|       |   |-- serial.log
+|       |   |-- typed.png
+|       |   `-- typed.ppm
+|       |-- test-page-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       `-- test-readonly-256-set2/
+|           |-- cpu-registers.txt
+|           |-- elf.txt
+|           |-- kernel.map
+|           |-- qemu.log
+|           |-- result.json
+|           |-- screen.png
+|           |-- screen.ppm
+|           |-- serial.log
+|           `-- undefined-symbols.txt
+|-- docs/
+|   |-- graphics-and-input.md
+|   |-- graphics-font-license.txt
+|   |-- interrupts.md
+|   |-- memory-map.md
+|   |-- memory.md
+|   |-- stage-3-files.txt
+|   `-- stage-3-report.md
+|-- gui/
+|   `-- gfx/
+|       |-- font.h
+|       |-- gfx.c
+|       `-- gfx.h
+|-- kernel/
+|   |-- arch/
+|   |   `-- x86/
+|   |       |-- idt.c
+|   |       |-- pic.c
+|   |       `-- pic.h
+|   |-- drivers/
+|   |   |-- framebuffer.c
+|   |   |-- framebuffer.h
+|   |   |-- input.h
+|   |   |-- input_selftest.c
+|   |   |-- keyboard.c
+|   |   |-- mouse.c
+|   |   `-- ps2.c
+|   |-- graphics_demo.c
+|   |-- graphics_demo.h
+|   `-- main.c
+|-- scripts/
+|   |-- make-iso.sh
+|   `-- run-qemu.sh
+`-- tools/
+    |-- input_test.py
+    |-- make_font.py
+    `-- smoke_test.py
