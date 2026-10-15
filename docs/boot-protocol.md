@@ -29,8 +29,8 @@ VBE 2 uses the standard pitch and masks; VBE 3 uses the dedicated linear pitch
 and masks. The kernel accepts non-overlapping byte-aligned 8-bit RGB fields and
 honors their positions. It accepts 1024x768x32 or the fallback 800x600x32.
 
-Kernel parameters are not a public userspace ABI. No `.gex` loader or syscall
-entry point exists yet.
+Kernel parameters are not a public userspace ABI. Stage 4 defines separate
+`.gex` and syscall contracts in `gex.md` and `syscalls.md`.
 
 Stages 1 and 2 preserve the bootloader handoff above. In Stage 2 the low entry
 trampoline enables paging, jumps to the linked higher half and changes ESP to

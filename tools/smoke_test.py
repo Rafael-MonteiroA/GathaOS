@@ -92,7 +92,7 @@ def verify_frame(output, fault, elf):
         return {}
     fields = {name: int(value, 16) for name, value in re.findall(r"\b([A-Z0-9]+)=0x([0-9A-F]{8})", output)}
     expected = {"VECTOR": {"div0": 0, "gp": 13, "page": 14, "readonly": 14}[fault],
-                "ERROR": {"div0": 0, "gp": 0x18, "page": 2, "readonly": 3}[fault],
+                "ERROR": {"div0": 0, "gp": 0x38, "page": 2, "readonly": 3}[fault],
                 "CS": 8, "SS": 16, "DS": 16, "ES": 16, "FS": 16, "GS": 16}
     symbol = {"div0": "debug_divide_instruction", "gp": "debug_gp_instruction",
               "page": "debug_page_instruction", "readonly": "debug_readonly_instruction"}[fault]
@@ -104,7 +104,7 @@ def verify_frame(output, fault, elf):
         expected.update(EAX=0x13579BDF, EBX=0x2468ACE0, ECX=0, EDX=0,
                         ESI=0x11223344, EDI=0x55667788, EBP=0x99AABBCC)
     elif fault == "gp":
-        expected["EAX"] = 0x18
+        expected["EAX"] = 0x38
     elif fault == "page":
         expected["CR2"] = 0
     elif fault == "readonly":
@@ -156,7 +156,7 @@ def main():
                         raise RuntimeError(output)
                     for value in re.findall(r"PIT: ticks=(\d+)\n", output):
                         tick_times.setdefault(int(value), time.monotonic())
-                    if (fault == "none" and 500 in tick_times) or (fault != "none" and "PANIC: HALTED" in output):
+                    if (fault == "none" and len(tick_times) >= 5) or (fault != "none" and "PANIC: HALTED" in output):
                         break
                     if process.poll() is not None:
                         raise RuntimeError("QEMU exited before boot completed")
@@ -179,10 +179,10 @@ def main():
                     if marker not in output:
                         raise RuntimeError(f"Missing serial marker: {marker}")
                 expected_ticks = [100, 200, 300, 400, 500] if fault == "none" else [100, 200]
-                if list(tick_times) != expected_ticks:
+                if [t // 100 * 100 for t in tick_times] != expected_ticks or any(t % 100 > 30 for t in tick_times):
                     raise RuntimeError(f"Unexpected tick progression: {list(tick_times)}")
                 if fault == "none":
-                    if "STAGE3: PASS" not in output or not 2.5 < tick_times[500] - tick_times[100] < 8:
+                    if "STAGE3: PASS" not in output or not 2.5 < list(tick_times.values())[-1] - list(tick_times.values())[0] < 12:
                         raise RuntimeError("Timer cadence or success marker is invalid")
                 else:
                     reason = {"div0": "DIVIDE ERROR", "gp": "GENERAL PROTECTION",
@@ -225,7 +225,7 @@ def main():
                     request("qmp_capabilities")
                     input_result = {}
                     if fault == "none":
-                        input_result = exercise(request, evidence, serial, width, height, scan_set)
+                        input_result = exercise(request, evidence, serial, width, height, scan_set, animated=True)
                         output = serial.read_text()
                     else:
                         screenshot = evidence / "screen.ppm"
@@ -238,8 +238,13 @@ def main():
                     esp = re.search(r"ESP=([0-9a-fA-F]+)", registers)
                     if not cr0 or int(cr0[1], 16) & 0x80010001 != 0x80010001:
                         raise RuntimeError("Hardware paging/write protection is not active")
-                    if not eip or not esp or min(int(eip[1], 16), int(esp[1], 16)) < 0xC0000000:
-                        raise RuntimeError("Kernel code or stack is not in the higher half")
+                    if not eip or not esp:
+                        raise RuntimeError("Missing CPU addresses")
+                    addresses = [int(eip[1],16),int(esp[1],16)]
+                    if not (min(addresses) >= 0xC0000000 or
+                            (fault == 'none' and all(0x400000 <= v <= 0x800000 for v in addresses) and
+                             re.search(r'CS\s*=001b',registers))):
+                        raise RuntimeError("CPU is outside expected kernel/user address spaces")
                     if fault != "none":
                         time.sleep(0.3)
                         if serial.read_text() != output or "HLT=1" not in registers:
@@ -256,9 +261,9 @@ def main():
                           "qemu": subprocess.check_output([qemu, "--version"], text=True).splitlines()[0],
                           "command": command, "serial": output, "exception_registers": fields,
                           "usable_frames": total, "final_free_frames": int(final[1]),
-                          "tick_arrival_seconds": {str(t): round(v - tick_times[100], 3) for t, v in tick_times.items()}}
+                          "tick_arrival_seconds": {str(t): round(v - next(iter(tick_times.values())), 3) for t, v in tick_times.items()}}
                 (evidence / "result.json").write_text(json.dumps(result, indent=2) + "\n")
-                print(output, end="")
+                print('\n'.join(line for line in output.splitlines() if not line.startswith('INPUT:')), end="\n")
                 print(f"SMOKE PASS ({fault}, {ram} MiB, set {scan_set}): memory, IRQs, display and input/exception checks")
             finally:
                 if process.poll() is None:

@@ -8,8 +8,8 @@ def main():
     source, destination = pathlib.Path(source), pathlib.Path(destination)
     if action == "sizes":
         size = source.stat().st_size
-        if not 0 < size <= 65536:
-            raise SystemExit("Boot protocol v1 kernel must fit in 64 KiB")
+        if not 0 < size <= 448 * 1024:
+            raise SystemExit("Kernel exceeds the 448 KiB real-mode staging buffer")
         destination.write_text(
             f"%define KERNEL_BYTES {size}\n%define KERNEL_SECTORS {(size + 511) // 512}\n"
         )
@@ -19,7 +19,7 @@ def main():
         kernel = (source / "kernel.bin").read_bytes()
         if len(stage1) != 512 or stage1[510:] != b"\x55\xaa":
             raise SystemExit("Invalid stage 1 boot sector")
-        if len(stage2) != 8192 or not 0 < len(kernel) <= 65536:
+        if len(stage2) != 8192 or not 0 < len(kernel) <= 448 * 1024:
             raise SystemExit("Invalid stage 2 or kernel size")
         payload = stage1 + stage2 + kernel
         destination.write_bytes(payload.ljust(1440 * 1024, b"\0"))

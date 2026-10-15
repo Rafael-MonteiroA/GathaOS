@@ -45,12 +45,24 @@ def verify_text(pixels, width, height, lines, caret):
                 raise RuntimeError(f'Text pixel mismatch at ({x},{y}): {actual:06x} != {expected:06x}; expected {lines!r}')
 
 
-def exercise(request, evidence, serial, width, height, scan_set):
+def exercise(request, evidence, serial, width, height, scan_set, animated=False):
     start = serial.read_text()
     for marker in [f'PS2: keyboard set={scan_set} translation=off', 'STAGE3: READY',
                    'GFXTEST: clipping alpha endpoints diagonal PASS',
                    'INPUTTEST: packet sign overflow resync key repeat release PASS']:
         assert marker in start, marker
+    def capture_checked(name, check):
+        deadline = time.monotonic() + 3
+        while True:
+            pixels = read_screen(request,evidence,name,width,height)
+            try:
+                check(pixels)
+                return pixels
+            except (AssertionError,RuntimeError):
+                if time.monotonic() >= deadline: raise
+                time.sleep(0.03)
+    def text_capture(name, lines, caret):
+        return capture_checked(name,lambda pixels: verify_text(pixels,width,height,lines,caret))
     def event(kind, data):
         request('input-send-event', {'events': [{'type': kind, 'data': data}]})
     def key(name, down):
@@ -63,10 +75,16 @@ def exercise(request, evidence, serial, width, height, scan_set):
     def clear():
         key('ctrl', True); tap('l'); key('ctrl', False)
     def move(dx, dy):
+        cx, cy, _ = latest_mouse()
+        expected = (max(0,min(width-1,cx+dx)),max(0,min(height-1,cy+dy)))
         request('input-send-event', {'events': [
             {'type': 'rel', 'data': {'axis': 'x', 'value': dx}},
             {'type': 'rel', 'data': {'axis': 'y', 'value': dy}}]})
-        time.sleep(0.06)
+        deadline = time.monotonic()+3
+        while latest_mouse()[:2] != expected:
+            if time.monotonic() >= deadline: raise RuntimeError(f'Mouse movement timeout: {latest_mouse()} != {expected}')
+            time.sleep(0.01)
+        time.sleep(0.03)
     def latest_mouse():
         values = re.findall(r'INPUT: mouse x=(\d+) y=(\d+) buttons=(\d+)', serial.read_text())
         return tuple(map(int, values[-1])) if values else (width // 2, height // 2, 0)
@@ -77,6 +95,17 @@ def exercise(request, evidence, serial, width, height, scan_set):
             move(max(-100, min(100, x-cx)), max(-100, min(100, y-cy)))
         raise RuntimeError(f'Mouse failed to reach {(x,y)}; got {latest_mouse()}')
     initial = read_screen(request, evidence, 'screen', width, height)
+    if animated:
+        time.sleep(0.5)
+        later = read_screen(request,evidence,'animated',width,height)
+        for x in (48, 48+(width-96)//3+16):
+            assert any(pixel(initial,width,px,230) != pixel(later,width,px,230) for px in range(x,x+200)), 'User animation did not move'
+        log = serial.read_text()
+        assert 'STAGE4: PASS' in log and log.count('USERTEST: invalid pointer and syscall rejected PASS') == 2
+        assert re.search(r'USERFAULT: pid=\d+ vector=13 error=0',log)
+        assert re.search(r'USERFAULT: pid=\d+ vector=14 error=5',log)
+        assert re.search(r'USERFAULT: pid=\d+ vector=14 error=7',log)
+        assert 'THREAD: kernel worker running' in log
     card = (width - 96) // 3
     second = 48 + card + 16
     third = second + card + 16
@@ -85,6 +114,7 @@ def exercise(request, evidence, serial, width, height, scan_set):
               (second, 211): 0x38bdf8, (second, 254): 0xa78bfa,
               (third, 220): 0x3b82f6, (third+50, 220): 0x987ad6}
     for point, expected in probes.items():
+        if animated and point[0] < third and point[1] < 280: continue
         assert pixel(initial, width, *point) == expected, f'Primitive sample {point}'
     move_to(8, 140)
     for name, shift in [('g',True),('a',False),('t',False),('h',False),('a',False),
@@ -97,8 +127,7 @@ def exercise(request, evidence, serial, width, height, scan_set):
         key(modifier, True); tap('q'); key(modifier, False)
     tap('print'); tap('pause')
     time.sleep(0.15)
-    typed = read_screen(request, evidence, 'typed', width, height)
-    verify_text(typed, width, height, ['GathaOS 3!', 'ab  zQwE'], (8, 1))
+    typed = text_capture('typed',['GathaOS 3!', 'ab  zQwE'],(8,1))
     # Movement over both artwork and text must restore every background pixel.
     baseline = typed
     move_to(100,230)
@@ -110,8 +139,10 @@ def exercise(request, evidence, serial, width, height, scan_set):
     for _ in range(30): move(2,1)
     assert latest_mouse()[:2] == (460,420), 'Continuous relative motion'
     move_to(8,140)
-    restored = read_screen(request, evidence, 'cursor-restored', width, height)
-    assert baseline == restored, 'Cursor left trails or corrupted underlying text'
+    def restored_check(pixels):
+        offset = width*280*3 if animated else 0
+        assert baseline[offset:] == pixels[offset:], 'Cursor trails or corrupted background'
+    capture_checked('cursor-restored',restored_check)
     for button, mask, index in [('left',1,0), ('middle',4,1), ('right',2,2)]:
         event('btn', {'down':True, 'button':button}); time.sleep(0.1)
         assert latest_mouse()[2] == mask
@@ -121,26 +152,28 @@ def exercise(request, evidence, serial, width, height, scan_set):
         assert latest_mouse()[2] == 0
     clear()
     before = len(serial.read_text())
-    key('r', True); time.sleep(0.8); key('r', False); time.sleep(0.15)
+    key('r', True)
+    deadline = time.monotonic() + 5
+    while len(re.findall(r'INPUT: key=19 down=1',serial.read_text()[before:])) < 6:
+        if time.monotonic() >= deadline: raise RuntimeError('Held key did not repeat')
+        time.sleep(0.02)
+    key('r', False); time.sleep(0.15)
     repeats = re.findall(r'INPUT: key=19 down=1 ascii=114 mods=0 repeat=([01])', serial.read_text()[before:])
     assert 5 <= len(repeats) <= 20 and repeats[0] == '0' and all(r == '1' for r in repeats[1:])
     stopped = len(re.findall(r'INPUT: key=19 down=1', serial.read_text()))
     time.sleep(0.3)
     assert len(re.findall(r'INPUT: key=19 down=1', serial.read_text())) == stopped
-    repeated = read_screen(request, evidence, 'repeat', width, height)
-    verify_text(repeated, width, height, ['r' * len(repeats)], (len(repeats),0))
+    text_capture('repeat',['r' * len(repeats)],(len(repeats),0))
     # Scroll beyond the visible area and confirm only the newest lines remain.
     clear()
     rows = (height - 448) // 20
     for _ in range(rows + 3): tap('x'); tap('ret')
-    scrolled = read_screen(request, evidence, 'scrolled', width, height)
-    verify_text(scrolled, width, height, ['x'] * (rows-1), (0,rows-1))
+    text_capture('scrolled',['x'] * (rows-1),(0,rows-1))
     clear()
     for c in 'GathaOS 3!':
         tap('spc' if c == ' ' else '1' if c == '!' else c.lower(), c.isupper() or c == '!')
     time.sleep(0.1)
-    final = read_screen(request, evidence, 'final', width, height)
-    verify_text(final, width, height, ['GathaOS 3!'], (10,0))
+    text_capture('final',['GathaOS 3!'],(10,0))
     output = serial.read_text()
     assert not any(word in output for word in ('PANIC', 'FAIL', 'dropped bytes'))
     return {'scancode_set': scan_set, 'typed_lines': ['GathaOS 3!', 'ab  zQwE'],

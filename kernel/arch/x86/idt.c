@@ -3,6 +3,8 @@
 #include "pit.h"
 #include "drivers/serial.h"
 #include "drivers/input.h"
+#include "sched/task.h"
+#include "syscall/syscall.h"
 #include "panic.h"
 struct idt_gate {
     uint16_t offset_low, selector;
@@ -29,20 +31,26 @@ void idt_init(void) {
         idt[i].offset_low = (uint16_t)address;
         idt[i].selector = 0x08;
         idt[i].zero = 0;
-        idt[i].attributes = 0x8e;
+        idt[i].attributes = i == 128 ? 0xee : 0x8e;
         idt[i].offset_high = (uint16_t)(address >> 16);
     }
     const struct idt_pointer pointer = {sizeof(idt) - 1, (uint32_t)(uintptr_t)idt};
     __asm__ volatile("lidt %0" : : "m"(pointer) : "memory");
     klog("IDT: 256 ring-0 interrupt gates installed\r\n");
 }
-void interrupt_dispatch(struct interrupt_frame *frame) {
+struct interrupt_frame *interrupt_dispatch(struct interrupt_frame *frame) {
+    if (frame->vector == 128) return syscall_dispatch(frame);
+    if (frame->vector < 32 && (frame->cs & 3) == 3) {
+        klog("USERFAULT: pid="); klog_u32(task_current()->pid);
+        klog(" vector="); klog_u32(frame->vector); klog(" error="); klog_u32(frame->error); klog("\r\n");
+        return task_exit(frame,-(int)frame->vector);
+    }
     if (frame->vector < 32)
         panic(exceptions[frame->vector], frame);
     if (frame->vector >= 32 && frame->vector < 48) {
         unsigned irq = frame->vector - 32;
         if (pic_is_spurious(irq))
-            return;
+            return frame;
         if (irq == 0)
             pit_interrupt();
         else if (irq == 1 || irq == 12)
@@ -50,7 +58,7 @@ void interrupt_dispatch(struct interrupt_frame *frame) {
         else
             panic("UNEXPECTED IRQ", frame);
         pic_eoi(irq);
-        return;
+        return irq == 0 ? schedule(frame,0) : frame;
     }
     panic("UNEXPECTED INTERRUPT", frame);
 }

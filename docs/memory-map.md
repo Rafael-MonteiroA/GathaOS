@@ -1,4 +1,4 @@
-# Memory map — Stages 2 and 3
+# Memory map — Stages 2 through 4
 
 ## Physical layout
 
@@ -13,7 +13,7 @@
 | Below 0x07c00 | Real-mode stack |
 | 0x07c00–0x07dff | First boot stage |
 | 0x08000–0x09fff | Second boot stage and bootstrap GDT |
-| 0x10000–0x1ffff | Kernel raw-image loading buffer |
+| 0x10000–0x7ffff | Kernel raw-image loading buffer (448 KiB from Stage 4) |
 | Below 0x90000 | Kernel stack's physical backing, reserved |
 | 0xa0000–0xfffff | Legacy firmware/device region, preserved |
 | 0x100000 | Physical ELF entry, original bootstrap assembly |
@@ -33,7 +33,9 @@ The actual reserved end is printed on serial and saved in the ELF map.
 
 | Range | Mapping |
 |---|---|
-| 0x00000000–0xbfffffff | Unmapped; no low identity map remains |
+| 0x00400000–0x006fffff | Private user executable/data/BSS in task directories |
+| 0x007f0000–0x007fffff | Private user stack; lower guard space unmapped |
+| Other low addresses below 0xc0000000 | Unmapped; no identity map remains |
 | 0xc0000000–0xc0000fff | Unmapped high alias of physical page zero |
 | 0xc0001000–0xdfffffff | Direct map of physical addresses 0x1000–0x1fffffff |
 | 0xc0080000–0xc008ffff | Expected kernel stack region; initial ESP is 0xc0090000 |
@@ -43,7 +45,8 @@ The actual reserved end is printed on serial and saved in the ELF map.
 | 0xe8000000–0xe8ffffff | Framebuffer window; only required pages mapped |
 | Remaining addresses | Unmapped |
 
-All entries are supervisor-only, using 4 KiB non-PAE paging. The direct map is an
+Kernel entries are supervisor-only, using 4 KiB non-PAE paging. User directories
+add private user-accessible low pages. The direct map is an
 addressing convenience and includes holes/reserved regions: a mapped address does
 not mean its physical frame is allocatable or even installed RAM. Allocation
 must use PMM results, never arbitrary direct-map addresses. No RAM above 512 MiB
@@ -53,7 +56,8 @@ The framebuffer has cache-disable/write-through flags and is separate from RAM.
 Kernel GDT, IDT, bitmaps and page tables are statically reserved. The heap's
 physical pages are tracked by the PMM and return to it when trailing mappings
 are released. The bootstrap stack has no dedicated guard page or emergency
-fault stack. There is no userspace, swapping, PAE, NX or per-process address space.
+fault stack. Stage 4 adds per-process user address spaces; there is no swapping,
+PAE or NX.
 
 Stage 3 allocates a width * height * 4 RGB back buffer from the heap after memory
 tests complete (3 MiB at 1024x768). The front buffer remains in the VBE window.

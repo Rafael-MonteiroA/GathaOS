@@ -49,7 +49,7 @@ interrupt_common:
     sub esp, 12
     push ebx
     call interrupt_dispatch
-    mov esp, ebx
+    mov esp, eax
     pop eax
     mov gs, ax
     pop eax
@@ -136,7 +136,7 @@ debug_divide_instruction:
 global debug_trigger_gp
 global debug_gp_instruction
 debug_trigger_gp:
-    mov eax, 0x18
+    mov eax, 0x38
 debug_gp_instruction:
     mov ds, ax
     ud2

@@ -34,4 +34,9 @@ void kfree(void *pointer);
 int heap_validate(void);
 uint32_t heap_mapped_bytes(void);
 void memory_self_test(void);
+uint32_t paging_kernel_directory(void);
+uint32_t paging_user_create(void);
+int paging_user_map(uint32_t directory, uint32_t address, uint32_t frame, int writable);
+void paging_user_destroy(uint32_t directory);
+int user_range(uint32_t address, uint32_t size, int writable);
 #endif

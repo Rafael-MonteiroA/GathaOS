@@ -2,7 +2,7 @@
 #define GATHA_INTERRUPTS_H
 #include <stddef.h>
 #include <stdint.h>
-/* Ring-0 frame only: no privilege transition, user ESP or user SS in Stage 1. */
+/* Ring 3 appends user ESP and SS after this common prefix. */
 struct interrupt_frame {
     uint32_t gs, fs, es, ds;
     uint32_t edi, esi, ebp, saved_esp, ebx, edx, ecx, eax;
@@ -13,7 +13,8 @@ _Static_assert(offsetof(struct interrupt_frame, vector) == 48, "ISR vector offse
 _Static_assert(offsetof(struct interrupt_frame, eflags) == 64, "ISR flags offset");
 void gdt_init(void);
 void idt_init(void);
-void interrupt_dispatch(struct interrupt_frame *frame);
+struct interrupt_frame *interrupt_dispatch(struct interrupt_frame *frame);
+void tss_stack(uint32_t top);
 int interrupt_probe(void);
 _Noreturn void debug_trigger_divide(void);
 _Noreturn void debug_trigger_gp(void);

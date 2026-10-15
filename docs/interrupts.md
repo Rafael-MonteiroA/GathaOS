@@ -2,7 +2,8 @@
 
 The kernel replaces the bootloader GDT with a kernel-owned null descriptor,
 flat ring-0 code descriptor (0x08) and flat ring-0 data descriptor (0x10).
-All segment registers are reloaded. There is no ring 3 or TSS yet.
+All segment registers are reloaded. Stage 4 adds ring-3 code/data at 0x1b/0x23
+and a TSS at 0x28, with a per-task kernel entry stack.
 
 The IDT has 256 present 32-bit interrupt gates, selector 0x08, DPL 0. The CPU
 clears IF on entry. NASM stubs normalize the stack: exceptions 8, 10-14, 17,
@@ -21,7 +22,7 @@ The C `interrupt_frame` layout, starting at offset zero:
 | 48, 52 | Vector and error code |
 | 56, 60, 64 | EIP, CS and EFLAGS |
 
-This is a ring-0-only frame. There is no privilege transition stack tail.
+Ring-3 frames append user ESP and SS after the common 68-byte prefix.
 Interrupted ESP is PUSHAD's saved ESP plus 20 bytes (two normalized fields and
 three CPU-pushed words). SS is the current kernel stack selector.
 
@@ -68,8 +69,9 @@ been validated, only serial output is used.
 The divide demo is assembly, avoiding undefined C division. It sets known
 register values, CF and DF before `div ecx` with ECX zero. Tests compare the saved
 EIP with `debug_divide_instruction` in the ELF and check all sentinel values.
-The GP demo loads the out-of-GDT selector 0x18 into DS; the CPU must report vector
-13 and error 0x18 with EIP at `debug_gp_instruction`.
+The GP demo loads the out-of-GDT selector 0x38 into DS; the CPU must report vector
+13 and error 0x38 with EIP at `debug_gp_instruction`. Stage 4 changes the invalid
+selector from 0x18 to 0x38 because 0x18 now names the user code descriptor.
 
 Stage 2 retains this frame and moves code, stack, GDT and IDT into the higher
 half. ESP and EIP in diagnostics are now virtual high addresses; CR0.PG/WP are
@@ -79,4 +81,4 @@ page (error 3, CR2 equal to the protected symbol). See `memory.md`.
 All code assumes a usable kernel stack. There is no dedicated double-fault task
 or emergency stack; stack corruption, faults during low-level entry, and an
 unusable framebuffer can still prevent full diagnostics. Ring-3 frames and task
-switching belong to Stage 4. Paging and allocators are now implemented in Stage 2.
+switching are implemented in Stage 4; see `syscalls.md` for the extended contract.

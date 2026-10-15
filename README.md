@@ -1,7 +1,9 @@
 # GathaOS
 
 GathaOS is an original, freestanding x86 operating system written in NASM and C.
-**Stage 3 — Graphics and Input Drivers** provides a graphical input test screen,
+**Stage 4 — Tasks and User Mode** adds preemptive tasks, ring 3, syscalls and GEX
+executables. Two isolated user programs animate while the input lab stays usable.
+The graphics/input layer provides a graphical test screen,
 double buffering, drawing primitives, an original bitmap font, PS/2 keyboard
 and mouse. Its own BIOS loader boots a higher-half kernel with paging, physical
 page allocation, a kernel heap, exceptions, a 100 Hz timer and COM1 logging.
@@ -24,12 +26,12 @@ builds run in a native temporary checkout, with verified copies returned here.
 
 `make clean` removes `build/` and preserves previous ISOs. Existing release files
 are immutable: an identical rebuild verifies them; different bytes require a
-fresh filename, such as `ISO=dist/gathaos-stage3-drivers-fix1.iso`.
+fresh filename, such as `ISO=dist/gathaos-stage4-tasks-fix1.iso`.
 
 ## Run and use
 
 ```sh
-qemu-system-i386 -cdrom dist/gathaos-stage3-drivers.iso -boot d -m 256M -vga std -serial stdio -no-reboot
+qemu-system-i386 -cdrom dist/gathaos-stage4-tasks.iso -boot d -m 256M -vga std -serial stdio -no-reboot
 ```
 
 This works in PowerShell with QEMU on PATH, or Ubuntu with a display. WSL graphical
@@ -40,7 +42,8 @@ Type into the large text area using a **US keyboard layout**. Enter, Backspace,
 Tab, Shift, Caps Lock, Ctrl+L (clear), wrapping and scrolling work. Hold a key to
 repeat. Move the mouse and press its left, middle and right buttons; the status
 indicators respond. This is a kernel driver demonstration; there is no desktop,
-window manager, file saving or user application yet. Stage 4 requires approval.
+window manager or file saving yet. Demo applications now execute in user mode.
+The user has authorized sequential completion of the remaining stages.
 
 VirtualBox / VMware: Other 32-bit OS, legacy BIOS, EFI disabled, 256 MiB RAM,
 VGA-compatible graphics (VBoxVGA in VirtualBox), at least 8 MiB video RAM, 3D off,
@@ -56,11 +59,12 @@ hypervisors remain untested; QEMU standard VGA is the verified target.
 3. Deliberate null-page write, read-only-page write, divide error and general
    protection with 256 MiB RAM, behind separate `DEBUG_FAULT` options.
 
-Every boot checks the existing memory stress suite, frame accounting, higher-half
-CPU state and timer/IRQ behavior. Normal boots additionally send real emulated
+Every boot checks memory stress, frame accounting and timer/IRQ behavior.
+Normal boots verify user animations, preemption, sleep, yield, kernel threads,
+user-fault isolation and invalid syscall/pointer rejection, then send emulated
 keyboard and mouse events through QMP, verify typed text against display pixels,
 test repeat/release, scrolling, modifiers, three buttons, motion and edge clamps,
-and compare the full display after cursor movement to detect trails. Fault boots
+and compare the non-animated area after cursor movement to detect trails. Fault boots
 check register diagnostics and complete panic images. Evidence lives under
 `build/test-<mode>-<RAM>-set<1|2>/` with serial, QMP registers, PNG/PPM and JSON.
 
@@ -72,20 +76,22 @@ make run DEBUG_FAULT=page ISO=build/gathaos-page.iso
 
 Default keyboard set 2 and optional set 1 use separate build directories. Both
 disable controller translation and query the selected device set. The suite
-keeps auxiliary set-1/fault ISOs in `build/`. Normal kernels contain no deliberate
-fault instructions. Other fault choices are `readonly`, `div0` and `gp`.
+keeps auxiliary set-1/fault ISOs in `build/`. Normal boots exercise isolated user
+fault probes; deliberate kernel panics require `DEBUG_FAULT`. Other fault choices
+are `readonly`, `div0` and `gp`.
 
 ## Limits and documentation
 
 The physical allocator manages up to 512 MiB; the heap can map up to 16 MiB.
 Non-PAE paging is supervisor-only. Boot memory tests run before the back buffer
-is allocated. The raw kernel payload limit is 64 KiB and bootstrap map is 4 MiB.
+is allocated. The raw kernel payload limit is 448 KiB and bootstrap map is 4 MiB.
 Software buffering is not synchronized to vertical retrace; tearing is possible.
 PS/2 standard three-byte mouse and US printable ASCII are supported. There is no
 USB HID, wheel support, ABNT2, Unicode, text navigation or persistent editing.
 
-Read `docs/stage-3-report.md`, `docs/graphics-and-input.md`, `docs/memory.md`,
+Read `docs/stage-4-report.md`, `docs/gex.md`, `docs/syscalls.md`,
+`docs/graphics-and-input.md`, `docs/memory.md`,
 `docs/memory-map.md`, `docs/boot-protocol.md` and `docs/interrupts.md`. Font and
 cursor permissions are in `docs/graphics-font-license.txt`; the panic font's
 permission is in `docs/panic-font-license.txt`. Previous reports and ISOs remain.
-Stage 4 (tasks, scheduler, syscalls, user mode and `.gex`) has not started.
+Stage 5 will add the original filesystem and persistent IDE storage next.

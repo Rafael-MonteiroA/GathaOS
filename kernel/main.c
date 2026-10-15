@@ -9,6 +9,7 @@
 #include "../libgatha/memory.h"
 #include "drivers/input.h"
 #include "graphics_demo.h"
+#include "sched/task.h"
 static struct boot_info boot_state;
 #if DEBUG_FAULT != 0
 static uint32_t pixel_color(const struct boot_info *b, uint32_t rgb) {
@@ -87,6 +88,7 @@ void kernel_main(const struct boot_info *b) {
     klog("STAGE2: TIMER RUNNING\r\n");
 #if DEBUG_FAULT == 0
     ps2_init(b->width, b->height);
+    tasks_demo_init();
     graphics_demo_run();
 #endif
     uint32_t next_report = 100;

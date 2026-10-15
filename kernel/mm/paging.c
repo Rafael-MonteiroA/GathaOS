@@ -1,6 +1,7 @@
 #include "memory.h"
 #include "drivers/serial.h"
 #include "panic.h"
+#include "../libgatha/memory.h"
 #define PRESENT 1u
 #define WRITE 2u
 #define UNCACHED 0x18u
@@ -72,4 +73,40 @@ uint32_t paging_flags(uint32_t address) {
 uint32_t paging_physical(uint32_t address) {
     uint32_t *pte = entry(address);
     return pte && (*pte & PRESENT) ? (*pte & 0xfffff000) + (address & 0xfff) : UINT32_MAX;
+}
+uint32_t paging_kernel_directory(void) { return physical(directory); }
+uint32_t paging_user_create(void) {
+    uint32_t pd = pmm_alloc(), pt = pmm_alloc();
+    if (!pd || !pt) { if (pd) pmm_free(pd); if (pt) pmm_free(pt); return 0; }
+    uint32_t *d = physical_pointer(pd);
+    memcpy(d, directory, PAGE_SIZE);
+    memset(physical_pointer(pt), 0, PAGE_SIZE);
+    d[1] = pt | 7;
+    return pd;
+}
+int paging_user_map(uint32_t pd, uint32_t address, uint32_t frame, int writable) {
+    if (address < 0x400000 || address >= 0x800000 || (address | frame) % PAGE_SIZE || !frame) return 0;
+    uint32_t *d = physical_pointer(pd), *pt = physical_pointer(d[1] & 0xfffff000);
+    unsigned i = (address >> 12) & 1023;
+    if (pt[i]) return 0;
+    pt[i] = frame | 5u | (writable ? 2u : 0u);
+    return 1;
+}
+void paging_user_destroy(uint32_t pd) {
+    if (!pd || pd == physical(directory)) return;
+    uint32_t *d = physical_pointer(pd), *pt = physical_pointer(d[1] & 0xfffff000);
+    for (unsigned i = 0; i < 1024; ++i) if (pt[i] & 1) pmm_free(pt[i] & 0xfffff000);
+    pmm_free(d[1] & 0xfffff000); pmm_free(pd);
+}
+int user_range(uint32_t address, uint32_t size, int writable) {
+    if (!size) return 1;
+    if (address < 0x400000 || address >= 0x800000 || size > 0x800000 - address) return 0;
+    uint32_t cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    uint32_t *d = physical_pointer(cr3);
+    if ((d[1] & 5) != 5) return 0;
+    uint32_t *pt = physical_pointer(d[1] & 0xfffff000);
+    for (uint32_t p = address & 0xfffff000; p <= (address + size - 1) / PAGE_SIZE * PAGE_SIZE; p += PAGE_SIZE)
+        if ((pt[(p >> 12) & 1023] & (writable ? 7u : 5u)) != (writable ? 7u : 5u)) return 0;
+    return 1;
 }

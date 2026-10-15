@@ -6,6 +6,9 @@
 #include "arch/x86/io.h"
 #include "../gui/gfx/gfx.h"
 #include "../libgatha/memory.h"
+extern int tasks_demo_dirty(void);
+extern void tasks_demo_paint(void);
+extern void tasks_demo_report(void);
 static int width, height, columns, rows, column, row, mouse_x, mouse_y;
 static unsigned mods, buttons;
 static char cells[20][129];
@@ -97,7 +100,7 @@ void graphics_demo_init(const struct boot_info *boot) {
     gfx_text(52, 32, "GathaOS", 0xf1f5f9, 3);
     gfx_text(34, 100, "An original operating system. Built from the first instruction.", 0xa8bed4, 1);
     gfx_round_rect(width - 230, 36, 198, 32, 8, 0x164a4b);
-    gfx_text(width - 214, 44, "STAGE 03 / INPUT LAB", 0x8ff5d5, 1);
+    gfx_text(width - 214, 44, "STAGE 04 / TASK LAB", 0x8ff5d5, 1);
     int card = (width - 96) / 3;
     for (int i = 0; i < 3; ++i) gfx_round_rect(32 + i * (card + 16), 160, card, 120, 12, 0x18283d);
     gfx_text(48, 176, "01  SHAPES + LINES", 0x94a3b8, 1);
@@ -149,21 +152,27 @@ void graphics_demo_run(void) {
         uint32_t now = pit_ticks();
         struct input_event e;
         while (input_poll(&e, now)) dirty |= (unsigned)handle_event(&e);
+        if (tasks_demo_dirty()) dirty |= 4;
         if (dirty && now - next_frame < UINT32_C(0x80000000)) {
             int old_x = cursor_x, old_y = cursor_y;
+            uint32_t flags = irq_save();
             cursor_hide();
+            if (dirty & 4) tasks_demo_paint();
             if (dirty & 2) draw_text_area();
             draw_status(); cursor_show();
             if (dirty & 2) framebuffer_present(48, 360, width - 96, height - 448);
             framebuffer_present(32, height - 64, width - 64, 24);
             framebuffer_present(old_x, old_y, 16, 24);
             framebuffer_present(cursor_x, cursor_y, 16, 24);
+            if (dirty & 4) framebuffer_present(32,160,width-64,120);
+            irq_restore(flags);
             dirty = 0; next_frame = now + 2;
         }
         if (now - next_report < UINT32_C(0x80000000)) {
             klog("PIT: ticks="); klog_u32(now); klog("\r\n");
             if (next_report == 300) klog("STAGE3: PASS\r\n");
             next_report += 100;
+            tasks_demo_report();
         }
         /* IRQs only enqueue bytes; the main loop owns the back buffer and decoders. */
         __asm__ volatile("sti; hlt" : : : "memory");
