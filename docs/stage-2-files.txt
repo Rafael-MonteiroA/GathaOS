@@ -1,0 +1,108 @@
+gathaos/
+|-- dist/
+|   |-- gathaos-stage2-memory-page.iso
+|   |-- gathaos-stage2-memory.iso
+|   |-- stage2-build-verification.log
+|   |-- stage2-evidence/
+|   |   |-- el-torito.txt
+|   |   |-- test-div0-256/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- elf.txt
+|   |   |   |-- kernel.map
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |   |-- undefined-symbols.txt
+|   |   |-- test-gp-256/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- elf.txt
+|   |   |   |-- kernel.map
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |   |-- undefined-symbols.txt
+|   |   |-- test-none-256/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- elf.txt
+|   |   |   |-- kernel.map
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |   |-- undefined-symbols.txt
+|   |   |-- test-none-512/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |-- test-none-64/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |-- test-page-256/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- elf.txt
+|   |   |   |-- kernel.map
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |   |-- undefined-symbols.txt
+|   |   |-- test-readonly-256/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- elf.txt
+|   |   |   |-- kernel.map
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |   |-- undefined-symbols.txt
+|   |-- stage2-SHA256SUMS.txt
+|-- docs/
+|   |-- architecture.md
+|   |-- boot-protocol.md
+|   |-- interrupts.md
+|   |-- memory-map.md
+|   |-- memory.md
+|   |-- stage-2-files.txt
+|   |-- stage-2-report.md
+|-- kernel/
+|   |-- arch/
+|   |   |-- x86/
+|   |   |   |-- entry.asm
+|   |   |   |-- interrupts.asm
+|   |   |   |-- interrupts.h
+|   |-- linker.ld
+|   |-- main.c
+|   |-- mm/
+|   |   |-- heap.c
+|   |   |-- memory.h
+|   |   |-- paging.c
+|   |   |-- pmm.c
+|   |   |-- selftest.c
+|-- libgatha/
+|   |-- memory.c
+|   |-- memory.h
+|-- Makefile
+|-- README.md
+|-- scripts/
+|   |-- make-iso.sh
+|   |-- run-qemu.sh
+|   |-- smoke-test.sh
+|-- tools/
+|   |-- smoke_test.py
+
+Removed empty placeholders: kernel/mm/.gitkeep, libgatha/.gitkeep.
+Only Stage 2 created/changed files are shown; generated build/ files are omitted.

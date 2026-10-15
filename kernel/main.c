@@ -5,6 +5,9 @@
 #include "arch/x86/pic.h"
 #include "arch/x86/pit.h"
 #include "panic.h"
+#include "mm/memory.h"
+#include "../libgatha/memory.h"
+static struct boot_info boot_state;
 static uint32_t pixel_color(const struct boot_info *b, uint32_t rgb) {
     return (((rgb >> 16) & 255) << b->red_position) |
            (((rgb >> 8) & 255) << b->green_position) |
@@ -57,16 +60,22 @@ void kernel_main(const struct boot_info *b) {
     klog("x32 pitch=");
     klog_u32(b->pitch);
     klog("\r\n");
-    panic_init(b);
-    draw_pattern(b);
+    memcpy(&boot_state, b, sizeof(boot_state));
+    b = &boot_state;
     gdt_init();
     idt_init();
+    pmm_init(b);
+    paging_init(&boot_state);
+    panic_init(b);
+    draw_pattern(b);
+    heap_init();
+    memory_self_test();
     pic_init();
     pit_init();
     if (!interrupt_probe() || pit_ticks() == 0)
         panic("IRQ REGISTER RESTORE FAILED", 0);
     klog("IRQ: register-and-flags preservation PASS\r\n");
-    klog("STAGE1: TIMER RUNNING\r\n");
+    klog("STAGE2: TIMER RUNNING\r\n");
     uint32_t next_report = 100;
     for (;;) {
         /* Test the counter with IRQs disabled, then atomically sleep with STI/HLT. */
@@ -88,9 +97,19 @@ void kernel_main(const struct boot_info *b) {
                 klog("DEBUG: deliberate invalid data selector\r\n");
                 debug_trigger_gp();
             }
+#elif DEBUG_FAULT == 3
+            if (ticks >= 200) {
+                klog("DEBUG: deliberate null page write\r\n");
+                debug_trigger_page();
+            }
+#elif DEBUG_FAULT == 4
+            if (ticks >= 200) {
+                klog("DEBUG: deliberate read-only page write\r\n");
+                debug_trigger_readonly();
+            }
 #endif
             if (ticks == 300)
-                klog("STAGE1: PASS\r\n");
+                klog("STAGE2: PASS\r\n");
         } else {
             __asm__ volatile("sti; hlt" : : : "memory");
         }

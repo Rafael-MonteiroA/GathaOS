@@ -16,17 +16,23 @@ SUFFIX := -div0
 else ifeq ($(DEBUG_FAULT),gp)
 FAULT_ID := 2
 SUFFIX := -gp
+else ifeq ($(DEBUG_FAULT),page)
+FAULT_ID := 3
+SUFFIX := -page
+else ifeq ($(DEBUG_FAULT),readonly)
+FAULT_ID := 4
+SUFFIX := -readonly
 else
-$(error DEBUG_FAULT must be none, div0 or gp)
+$(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)
-ISO ?= dist/gathaos-stage1-core$(SUFFIX).iso
-PANIC_ISO ?= dist/gathaos-stage1-core-div0.iso
-GP_ISO ?= build/gathaos-stage1-core-gp.iso
+ISO ?= dist/gathaos-stage2-memory$(SUFFIX).iso
+PAGE_ISO ?= dist/gathaos-stage2-memory-page.iso
+RAM ?= 256
 CFLAGS := --target=i686-elf -std=c11 -O2 -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -Wall -Wextra -Werror -MMD -MP -Ikernel -DDEBUG_FAULT=$(FAULT_ID)
-SOURCES := kernel/main.c kernel/drivers/serial.c kernel/panic.c kernel/arch/x86/gdt.c kernel/arch/x86/idt.c kernel/arch/x86/pic.c kernel/arch/x86/pit.c
+SOURCES := kernel/main.c kernel/drivers/serial.c kernel/panic.c kernel/arch/x86/gdt.c kernel/arch/x86/idt.c kernel/arch/x86/pic.c kernel/arch/x86/pit.c kernel/mm/pmm.c kernel/mm/paging.c kernel/mm/heap.c kernel/mm/selftest.c libgatha/memory.c
 OBJECTS := $(BUILD)/entry.o $(BUILD)/interrupts.o $(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
-.PHONY: all iso run test clean
+.PHONY: all iso run test test-boot clean
 all: iso
 iso: $(ISO)
 $(BUILD):
@@ -54,11 +60,16 @@ $(ISO): $(BUILD)/boot.img scripts/make-iso.sh
 	bash scripts/make-iso.sh $(BUILD)/boot.img "$@" $(BUILD)
 run: iso
 	QEMU="$(QEMU)" bash scripts/run-qemu.sh "$(ISO)"
-test: iso
-	QEMU="$(QEMU)" bash scripts/smoke-test.sh "$(ISO)" $(DEBUG_FAULT) $(BUILD)/kernel.elf
+test-boot: iso
+	QEMU="$(QEMU)" bash scripts/smoke-test.sh "$(ISO)" $(DEBUG_FAULT) $(BUILD)/kernel.elf $(RAM)
+test: test-boot
 ifeq ($(DEBUG_FAULT),none)
-	$(MAKE) DEBUG_FAULT=div0 ISO="$(PANIC_ISO)" test
-	$(MAKE) DEBUG_FAULT=gp ISO="$(GP_ISO)" test
+	$(MAKE) RAM=64 test-boot
+	$(MAKE) RAM=512 test-boot
+	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage2-memory-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage2-memory-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage2-memory-gp.iso test-boot
 endif
 clean:
 	rm -rf build

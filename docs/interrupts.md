@@ -1,4 +1,4 @@
-# Stage 1 interrupt and panic contract
+# Interrupt and panic contract, introduced in Stage 1
 
 The kernel replaces the bootloader GDT with a kernel-owned null descriptor,
 flat ring-0 code descriptor (0x08) and flat ring-0 data descriptor (0x10).
@@ -67,7 +67,12 @@ EIP with `debug_divide_instruction` in the ELF and check all sentinel values.
 The GP demo loads the out-of-GDT selector 0x18 into DS; the CPU must report vector
 13 and error 0x18 with EIP at `debug_gp_instruction`.
 
+Stage 2 retains this frame and moves code, stack, GDT and IDT into the higher
+half. ESP and EIP in diagnostics are now virtual high addresses; CR0.PG/WP are
+set. Page-fault demos test both an absent page (error 2, CR2 zero) and a read-only
+page (error 3, CR2 equal to the protected symbol). See `memory.md`.
+
 All code assumes a usable kernel stack. There is no dedicated double-fault task
 or emergency stack; stack corruption, faults during low-level entry, and an
 unusable framebuffer can still prevent full diagnostics. Ring-3 frames and task
-switching belong to Stage 4. Paging and allocator work belong to Stage 2.
+switching belong to Stage 4. Paging and allocators are now implemented in Stage 2.

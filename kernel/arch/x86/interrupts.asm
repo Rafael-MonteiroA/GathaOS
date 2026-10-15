@@ -140,9 +140,27 @@ debug_trigger_gp:
 debug_gp_instruction:
     mov ds, ax
     ud2
+%elif DEBUG_FAULT = 3
+global debug_trigger_page
+global debug_page_instruction
+debug_trigger_page:
+debug_page_instruction:
+    mov dword [0], 0x47415448
+    ud2
+%elif DEBUG_FAULT = 4
+global debug_trigger_readonly
+global debug_readonly_instruction
+debug_trigger_readonly:
+debug_readonly_instruction:
+    mov dword [debug_readonly_word], 0x47415448
+    ud2
 %endif
 
 section .rodata
+%if DEBUG_FAULT = 4
+global debug_readonly_word
+debug_readonly_word: dd 0x12345678
+%endif
 align 4
 global isr_table
 isr_table:

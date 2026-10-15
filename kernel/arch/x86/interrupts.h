@@ -17,4 +17,6 @@ void interrupt_dispatch(struct interrupt_frame *frame);
 int interrupt_probe(void);
 _Noreturn void debug_trigger_divide(void);
 _Noreturn void debug_trigger_gp(void);
+_Noreturn void debug_trigger_page(void);
+_Noreturn void debug_trigger_readonly(void);
 #endif

@@ -22,8 +22,8 @@ array of 32-bit little-endian fields (`kernel/boot.h`):
 
 Each E820 record is 24 bytes: 64-bit base, 64-bit length, 32-bit type and 32-bit
 extended attributes. For a 20-byte firmware response, attributes default to 1.
-Entries are retained as firmware data; a later physical memory manager must honor
-their types, attributes and reservations. No memory allocator exists at Stage 0.
+Entries are retained as firmware data. Stage 2's physical memory manager honors
+their types, attributes and reservations; the original Stage 0 had no allocator.
 
 VBE 2 uses the standard pitch and masks; VBE 3 uses the dedicated linear pitch
 and masks. The kernel accepts non-overlapping byte-aligned 8-bit RGB fields and
@@ -32,6 +32,10 @@ honors their positions. It accepts 1024x768x32 or the fallback 800x600x32.
 Kernel parameters are not a public userspace ABI. No `.gex` loader or syscall
 entry point exists yet.
 
-Stage 1 preserves this protocol and memory layout. After validating the handoff,
-the kernel replaces the bootstrap GDT and installs an IDT before enabling timer
-interrupts. See `interrupts.md` for the kernel's exception-frame contract.
+Stages 1 and 2 preserve the bootloader handoff above. In Stage 2 the low entry
+trampoline enables paging, jumps to the linked higher half and changes ESP to
+0xc0090000 before calling C. EBX becomes 0xc0004000. C copies the structure into
+its own static storage; the original E820 address remains physical, while the
+copied framebuffer address is changed to its virtual mapping after paging setup.
+No userspace ABI is implied. See `memory.md` for the transition and
+`interrupts.md` for the kernel's ring-0 exception-frame contract.

@@ -1,4 +1,4 @@
-"""Boot Stage 1 ISOs; verify timer IRQs, exception frames and displayed pixels."""
+"""Boot Stage 2 ISOs; verify memory stress, paging, IRQs and actual display pixels."""
 import hashlib
 import json
 import os
@@ -90,9 +90,11 @@ def verify_frame(output, fault, elf):
             raise RuntimeError("Normal kernel contains deliberate fault code")
         return {}
     fields = {name: int(value, 16) for name, value in re.findall(r"\b([A-Z0-9]+)=0x([0-9A-F]{8})", output)}
-    expected = {"VECTOR": 0 if fault == "div0" else 13, "ERROR": 0 if fault == "div0" else 0x18,
+    expected = {"VECTOR": {"div0": 0, "gp": 13, "page": 14, "readonly": 14}[fault],
+                "ERROR": {"div0": 0, "gp": 0x18, "page": 2, "readonly": 3}[fault],
                 "CS": 8, "SS": 16, "DS": 16, "ES": 16, "FS": 16, "GS": 16}
-    symbol = "debug_divide_instruction" if fault == "div0" else "debug_gp_instruction"
+    symbol = {"div0": "debug_divide_instruction", "gp": "debug_gp_instruction",
+              "page": "debug_page_instruction", "readonly": "debug_readonly_instruction"}[fault]
     match = re.search(r"^([0-9a-fA-F]+) [A-Za-z] " + symbol + r"$", symbols, re.M)
     if not match:
         raise RuntimeError("Missing expected fault instruction symbol")
@@ -100,18 +102,25 @@ def verify_frame(output, fault, elf):
     if fault == "div0":
         expected.update(EAX=0x13579BDF, EBX=0x2468ACE0, ECX=0, EDX=0,
                         ESI=0x11223344, EDI=0x55667788, EBP=0x99AABBCC)
-    else:
+    elif fault == "gp":
         expected["EAX"] = 0x18
+    elif fault == "page":
+        expected["CR2"] = 0
+    elif fault == "readonly":
+        word = re.search(r"^([0-9a-fA-F]+) [A-Za-z] debug_readonly_word$", symbols, re.M)
+        if not word:
+            raise RuntimeError("Missing read-only fault target")
+        expected["CR2"] = int(word[1], 16)
     for name, value in expected.items():
         if fields.get(name) != value:
             raise RuntimeError(f"Bad saved register {name}: {fields.get(name)} != {value}")
     flags_mask = 0x601 if fault == "div0" else 0x200
     if fields.get("EFLAGS", 0) & flags_mask != flags_mask:
         raise RuntimeError("Interrupted flags were not saved correctly")
-    if not 0x80000 <= fields.get("ESP", 0) < 0x90000 or fields["ESP"] & 3:
+    if not 0xC0080000 <= fields.get("ESP", 0) < 0xC0090000 or fields["ESP"] & 3:
         raise RuntimeError("Bad interrupted ESP")
-    if fields.get("CR0", 0) & 0x80000001 != 1:
-        raise RuntimeError("Expected protected mode with paging disabled")
+    if fields.get("CR0", 0) & 0x80010001 != 0x80010001 or fields["EIP"] < 0xC0000000:
+        raise RuntimeError("Expected higher-half protected mode with paging and write protection")
     return fields
 
 
@@ -119,9 +128,10 @@ def main():
     iso = Path(sys.argv[1]).resolve()
     fault = sys.argv[2]
     elf = Path(sys.argv[3])
-    if fault not in ("none", "div0", "gp"):
-        raise SystemExit("Expected none, div0 or gp test mode")
-    evidence = Path(f"build/test-{fault}").resolve()
+    ram = int(sys.argv[4])
+    if fault not in ("none", "div0", "gp", "page", "readonly"):
+        raise SystemExit("Invalid fault test mode")
+    evidence = Path(f"build/test-{fault}-{ram}").resolve()
     evidence.mkdir(parents=True, exist_ok=True)
     (evidence / "result.json").unlink(missing_ok=True)
     serial = evidence / "serial.log"
@@ -129,7 +139,7 @@ def main():
     qemu = os.environ.get("QEMU", "qemu-system-i386")
     with tempfile.TemporaryDirectory(prefix="gatha-qmp-") as temporary:
         endpoint = str(Path(temporary) / "qmp.sock")
-        command = [qemu, "-machine", "pc,accel=tcg", "-m", "256M", "-vga", "std",
+        command = [qemu, "-machine", "pc,accel=tcg", "-m", f"{ram}M", "-vga", "std",
                    "-cdrom", str(iso), "-boot", "d", "-display", "none", "-monitor", "none",
                    "-serial", f"file:{serial}", "-qmp", f"unix:{endpoint},server=on,wait=off",
                    "-no-reboot", "-no-shutdown", "-nic", "none"]
@@ -137,7 +147,7 @@ def main():
             process = subprocess.Popen(command, stdout=log, stderr=log)
             try:
                 tick_times = {}
-                deadline = time.monotonic() + 30
+                deadline = time.monotonic() + 90
                 while time.monotonic() < deadline:
                     output = serial.read_text() if serial.exists() else ""
                     if "BOOT ERROR" in output or "FAIL" in output or (fault == "none" and "PANIC" in output):
@@ -156,19 +166,40 @@ def main():
                                "IDT: 256 ring-0 interrupt gates installed",
                                "PIC: IRQ0-15 remapped to 32-47; only IRQ0 unmasked",
                                "PIT: channel=0 mode=2 divisor=11932 target_hz=100",
-                               "IRQ: register-and-flags preservation PASS", "STAGE1: TIMER RUNNING"]:
+                               "IRQ: register-and-flags preservation PASS", "STAGE2: TIMER RUNNING",
+                               "PAGING: higher_half=0xC0000000 identity=off null=unmapped wp=on",
+                               "HEAP: base=0xE0000000 limit_mib=16 alignment=16 initial_bytes=65536",
+                               "MMTEST: E820 rounding reservations overflow clipping PASS",
+                               "MMTEST: paging aliases protections unmap PASS",
+                               "MMTEST: heap OOM partial-growth rollback PASS",
+                               "MMTEST: heap mixed_operations=4096 alignment content coalescing PASS",
+                               "MMTEST: heap exhaustion_blocks=255 trim_and_reuse PASS", "MMTEST: ALL PASS"]:
                     if marker not in output:
                         raise RuntimeError(f"Missing serial marker: {marker}")
                 expected_ticks = [100, 200, 300, 400, 500] if fault == "none" else [100, 200]
                 if list(tick_times) != expected_ticks:
                     raise RuntimeError(f"Unexpected tick progression: {list(tick_times)}")
                 if fault == "none":
-                    if "STAGE1: PASS" not in output or not 2.5 < tick_times[500] - tick_times[100] < 8:
+                    if "STAGE2: PASS" not in output or not 2.5 < tick_times[500] - tick_times[100] < 8:
                         raise RuntimeError("Timer cadence or success marker is invalid")
                 else:
-                    reason = "DIVIDE ERROR" if fault == "div0" else "GENERAL PROTECTION"
-                    if "PANIC: " + reason not in output or "STAGE1: PASS" in output:
+                    reason = {"div0": "DIVIDE ERROR", "gp": "GENERAL PROTECTION",
+                              "page": "PAGE FAULT", "readonly": "PAGE FAULT"}[fault]
+                    if "PANIC: " + reason not in output or "STAGE2: PASS" in output:
                         raise RuntimeError("Unexpected exception path")
+                pmm = re.search(r"PMM: managed_limit_mib=512 usable_frames=(\d+) free_frames=(\d+) reserved_end=0x([0-9A-F]+)", output)
+                exhaustion = re.search(r"MMTEST: pmm exhaustion_frames=(\d+) restored_frames=(\d+) PASS", output)
+                final = re.search(r"MMTEST: final_free_frames=(\d+) heap_bytes=65536 PASS", output)
+                if not pmm or not exhaustion or not final:
+                    raise RuntimeError("Incomplete memory accounting")
+                total = int(pmm[1])
+                reserved = int(pmm[3], 16)
+                # QEMU's PC E820 reserves the final 128 KiB of RAM for ACPI/BIOS.
+                expected_total = (min(ram, 512) * 1024 * 1024 - 128 * 1024 - reserved) // 4096
+                if total != expected_total or total != int(pmm[2]):
+                    raise RuntimeError(f"Unexpected usable RAM count: {total} != {expected_total}")
+                if not (int(exhaustion[1]) == int(exhaustion[2]) == int(final[1]) == total - 16):
+                    raise RuntimeError("PMM or heap leaked frames")
                 fields = verify_frame(output, fault, elf)
                 if not re.search(r"E820: entries=([1-9]|[1-5][0-9]|6[0-4])\n", output):
                     raise RuntimeError("Missing valid E820 count")
@@ -195,6 +226,13 @@ def main():
                     verify_screen(screenshot, width, height, output, fault)
                     registers = request("human-monitor-command", {"command-line": "info registers"})
                     (evidence / "cpu-registers.txt").write_text(registers)
+                    cr0 = re.search(r"CR0=([0-9a-fA-F]+)", registers)
+                    eip = re.search(r"EIP=([0-9a-fA-F]+)", registers)
+                    esp = re.search(r"ESP=([0-9a-fA-F]+)", registers)
+                    if not cr0 or int(cr0[1], 16) & 0x80010001 != 0x80010001:
+                        raise RuntimeError("Hardware paging/write protection is not active")
+                    if not eip or not esp or min(int(eip[1], 16), int(esp[1], 16)) < 0xC0000000:
+                        raise RuntimeError("Kernel code or stack is not in the higher half")
                     if fault != "none":
                         time.sleep(0.3)
                         if serial.read_text() != output or "HLT=1" not in registers:
@@ -204,15 +242,16 @@ def main():
                             raise RuntimeError("Panic left IRQs enabled")
                     request("quit")
                 process.wait(timeout=5)
-                result = {"result": "PASS", "mode": fault, "iso": str(iso),
+                result = {"result": "PASS", "mode": fault, "ram_mib": ram, "iso": str(iso),
                           "sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                           "resolution": [width, height], "pixels_checked": width * height,
                           "qemu": subprocess.check_output([qemu, "--version"], text=True).splitlines()[0],
                           "command": command, "serial": output, "exception_registers": fields,
+                          "usable_frames": total, "final_free_frames": int(final[1]),
                           "tick_arrival_seconds": {str(t): round(v - tick_times[100], 3) for t, v in tick_times.items()}}
                 (evidence / "result.json").write_text(json.dumps(result, indent=2) + "\n")
                 print(output, end="")
-                print(f"SMOKE PASS ({fault}): IRQs, saved state and {width * height:,} screen pixels verified")
+                print(f"SMOKE PASS ({fault}, {ram} MiB): memory stress, paging, IRQs and {width * height:,} screen pixels verified")
             finally:
                 if process.poll() is None:
                     process.terminate()
