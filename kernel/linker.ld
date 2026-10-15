@@ -8,5 +8,5 @@ SECTIONS
     .data : ALIGN(16) { *(.data*) }
     .bss : ALIGN(16) { __bss_start = .; *(.bss*) *(COMMON) __bss_end = .; }
     /DISCARD/ : { *(.comment) *(.eh_frame*) *(.note*) }
-    ASSERT(__bss_end < 0x200000, "Stage 0 kernel exceeds reserved memory")
+    ASSERT(__bss_end < 0x200000, "Kernel exceeds reserved boot memory")
 }

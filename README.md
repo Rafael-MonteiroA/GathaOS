@@ -1,10 +1,11 @@
 # GathaOS
 
 GathaOS is an original, freestanding x86 operating system written in NASM and C.
-Only **Stage 0 — Toolchain and Boot** is implemented. The current ISO boots its
-own two-stage loader, enters 32-bit protected mode, logs to COM1 and draws a
-static test pattern. It contains no Linux kernel, GRUB, hosted libc or userland.
-There are no applications or interactive controls yet.
+**Stage 1 — Kernel Core** is implemented. Its custom BIOS loader enters 32-bit
+protected mode and starts a kernel with its own GDT/IDT, exception diagnostics,
+PIC handling, a 100 Hz PIT and COM1 logging. It contains no Linux kernel, GRUB,
+hosted libc or existing OS/userland. No applications or interactive controls
+exist yet. Stage 2 requires explicit user approval.
 
 ## Build on Ubuntu / WSL2
 
@@ -15,64 +16,89 @@ make test
 make run
 ```
 
-Use these commands from the repository root in Ubuntu/WSL2. The build uses
-Clang's `--target=i686-elf`, LLD, LLVM objcopy, NASM, Python 3 and xorriso.
-The host's libraries are never linked into the kernel. `make` is equivalent to
-`make iso`. Shell scripts are invoked with `bash`, including on Windows mounts.
-For verification, prefer a checkout in WSL's native filesystem: clock differences
-between Windows-mounted files and WSL can cause Make timestamp warnings. The
-delivered ISO was clean-built and tested in the native filesystem, then copied
-back with its SHA-256 verified.
+Run from the repository root in Ubuntu/WSL2. The toolchain is Clang with
+`--target=i686-elf`, LLD, LLVM objcopy, NASM, Python 3 and xorriso. Host libraries
+are never linked into the kernel. `make` is equivalent to `make iso`.
+Shell scripts are invoked with `bash`, including on Windows mounts.
 
-The image is `dist/gathaos-stage0-boot.iso`. `make clean` removes only `build/`;
-it preserves all released ISOs. An identical rebuild verifies the existing ISO;
-a different build refuses to overwrite it. For an approved Stage 0 bug fix use:
+Prefer WSL's native filesystem for builds: Windows/WSL clock skew on `/mnt/c`
+can produce Make timestamp warnings. Release verification uses a temporary
+native checkout, then copies the tested artifacts back and verifies their hashes.
+
+## Run the normal kernel
 
 ```sh
-make clean && make iso ISO=dist/gathaos-stage0-boot-fix1.iso
-make test ISO=dist/gathaos-stage0-boot-fix1.iso
+qemu-system-i386 -cdrom dist/gathaos-stage1-core.iso -boot d -m 256M -vga std -serial stdio -no-reboot
 ```
 
-## Run
+This command also works in PowerShell with QEMU on PATH. WSL graphical runs
+need a display such as WSLg. `make test` is headless and needs no graphical desktop.
+
+The normal screen retains the Stage 0 navy background, light border, six color
+bars and checkerboard. COM1 reports boot configuration, the IRQ preservation
+self-check, `PIT: ticks=100`, `200`, `300`, and so on at roughly one-second
+intervals. `STAGE1: PASS` appears after 300 ticks; the counter continues afterward.
+Close the QEMU window to stop the guest.
+
+For VirtualBox / VMware use a 32-bit Other OS VM, legacy BIOS (EFI disabled),
+256 MiB RAM, VGA-compatible graphics (VBoxVGA in VirtualBox), at least 8 MiB of
+video RAM, and 3D acceleration disabled. Boot the mounted ISO from the optical
+drive. No hard disk is required. These hypervisors have not been boot-tested.
+
+## Deliberate exception demo
 
 ```sh
-qemu-system-i386 -cdrom dist/gathaos-stage0-boot.iso -boot d -m 256M -vga std -serial stdio -no-reboot
+make iso DEBUG_FAULT=div0
+make run DEBUG_FAULT=div0
 ```
 
-On Windows, run that command in PowerShell from the repository root with QEMU
-on PATH. On WSL2, `make run` needs a graphical display such as WSLg. `make test`
-is headless and does not need one. Close the QEMU window to stop the guest.
+This produces `dist/gathaos-stage1-core-div0.iso`. After 200 timer ticks an
+assembly `div ecx` instruction with ECX zero raises a real divide exception.
+The red panic screen shows the cause, vector, error, instruction pointer,
+general registers, segment registers, flags and control registers. The CPU
+halts with interrupts disabled; restarting the VM repeats the test. The font is
+original and its permission grant is in `docs/panic-font-license.txt`.
 
-For VirtualBox or VMware: create a 32-bit Other OS VM with legacy BIOS (EFI
-disabled), 256 MiB RAM, a VGA-compatible adapter (VBoxVGA in VirtualBox), at
-least 8 MiB video RAM, and 3D acceleration disabled. Attach the ISO to the
-optical drive and boot from it. No hard disk is needed. These hypervisors have
-not been tested; QEMU `-vga std` is the verified target.
+`DEBUG_FAULT=none` is the default; deliberate fault instructions are excluded
+from that binary. `DEBUG_FAULT=gp` is an additional test build that triggers a
+general-protection exception with CPU-pushed error code 0x18. Separate build
+directories prevent debug/normal object files from being mixed.
 
-## Expected screen and test
+## Automated verification
 
-COM1 prints `GathaOS booting...`, E820 count, VBE dimensions and `STAGE0: PASS`.
-The screen has a navy background, light border, six colored bars and a gray / white
-checkerboard. The mode is 1024x768x32, with an 800x600x32 fallback when the BIOS
-does not advertise the preferred mode. The fallback is implemented but not yet
-verified on a BIOS lacking 1024x768.
+`make test` boots three actual ISOs using QEMU TCG: the normal kernel, divide
+error and general-protection error. It verifies:
 
-The automated test boots the **ISO**, waits for serial success, requests a real
-QEMU screen dump over QMP and compares every pixel against the expected pattern.
-It exits unsuccessfully on a timeout, boot error, missing marker or pixel mismatch.
-Logs, a PNG and JSON evidence are written under `build/test/`.
+- GDT/IDT/PIC/PIT initialization and IRQ preservation of seven general registers
+  plus CF, IF and DF, checked across a hardware timer interrupt.
+- Normal tick counts through 500 and their approximate wall-clock cadence.
+- Exception vector, error code, fault EIP against the linked ELF symbol, saved
+  register sentinels, segment selectors, stack bounds and flags.
+- Every captured framebuffer pixel, including the panic text and register values.
+- Panic leaves the virtual CPU halted with IRQs disabled and no continuing output.
 
-## Layout and scope
+Evidence is written to `build/test-none/`, `build/test-div0/` and `build/test-gp/`.
+The GP ISO used by the full suite is temporary under `build/`; the normal and
+divide-demo releases are in `dist/`. You can run only a fault test with
+`make test DEBUG_FAULT=div0` or `make test DEBUG_FAULT=gp`.
 
-- `boot/`: custom 512-byte first stage and 8 KiB second stage.
-- `kernel/`: freestanding entry point, boot protocol and minimal serial output.
-- `scripts/`, `tools/`: host setup, image packaging, run and smoke test tools.
-- `docs/`: architecture, boot protocol, memory map and stage report.
-- `libgatha/`, `gui/`, `apps/` and unused kernel directories: empty placeholders
-  for later stages, as required by `AGENTS.md`.
-- `dist/`: immutable ISO releases and their test evidence.
+`make clean` removes only `build/`. It preserves all stage ISOs in `dist/`,
+including Stage 0. Identical rebuilds verify an existing image; different bytes
+are rejected. For an approved bug-fix release choose new names, for example:
 
-No IDT, IRQ handlers, timer, allocator, paging, input, filesystem, userspace or GUI
-toolkit is implemented. Interrupts stay disabled after entering protected mode.
-The required flat GDT and tiny COM1 logger support boot only. Stage 1 must wait
-for the user's test and explicit approval.
+```sh
+make clean && make iso ISO=dist/gathaos-stage1-core-fix1.iso
+make test ISO=dist/gathaos-stage1-core-fix1.iso PANIC_ISO=dist/gathaos-stage1-core-div0-fix1.iso
+```
+
+## Scope and documentation
+
+See `docs/stage-1-report.md`, `docs/interrupts.md`, `docs/boot-protocol.md`,
+`docs/memory-map.md` and `docs/architecture.md`. Historical Stage 0 evidence
+and its report remain available. The fixed boot image still limits the kernel
+payload to 64 KiB and supports VBE 1024x768x32 with an unverified 800x600 fallback.
+
+There is no paging, allocator, task switching, userspace, filesystem, input,
+general graphics toolkit or application. The panic text drawer serves diagnostic
+output only. `libgatha/`, `gui/`, `apps/` and unused kernel directories remain
+empty placeholders for their assigned stages.

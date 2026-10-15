@@ -9,7 +9,7 @@ def main():
     if action == "sizes":
         size = source.stat().st_size
         if not 0 < size <= 65536:
-            raise SystemExit("Stage 0 kernel must fit in 64 KiB")
+            raise SystemExit("Boot protocol v1 kernel must fit in 64 KiB")
         destination.write_text(
             f"%define KERNEL_BYTES {size}\n%define KERNEL_SECTORS {(size + 511) // 512}\n"
         )

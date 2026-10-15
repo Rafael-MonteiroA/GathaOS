@@ -31,3 +31,7 @@ honors their positions. It accepts 1024x768x32 or the fallback 800x600x32.
 
 Kernel parameters are not a public userspace ABI. No `.gex` loader or syscall
 entry point exists yet.
+
+Stage 1 preserves this protocol and memory layout. After validating the handoff,
+the kernel replaces the bootstrap GDT and installs an IDT before enabling timer
+interrupts. See `interrupts.md` for the kernel's exception-frame contract.

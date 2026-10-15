@@ -1,0 +1,76 @@
+gathaos/
+|-- boot/
+|   |-- stage2.asm
+|-- dist/
+|   |-- gathaos-stage1-core-div0.iso
+|   |-- gathaos-stage1-core.iso
+|   |-- stage1-build-verification.log
+|   |-- stage1-evidence/
+|   |   |-- el-torito.txt
+|   |   |-- test-div0/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- elf.txt
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |   |-- undefined-symbols.txt
+|   |   |-- test-gp/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- elf.txt
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |   |-- undefined-symbols.txt
+|   |   |-- test-none/
+|   |   |   |-- cpu-registers.txt
+|   |   |   |-- elf.txt
+|   |   |   |-- qemu.log
+|   |   |   |-- result.json
+|   |   |   |-- screen.png
+|   |   |   |-- screen.ppm
+|   |   |   |-- serial.log
+|   |   |   |-- undefined-symbols.txt
+|   |-- stage1-SHA256SUMS.txt
+|-- docs/
+|   |-- architecture.md
+|   |-- boot-protocol.md
+|   |-- interrupts.md
+|   |-- memory-map.md
+|   |-- panic-font-license.txt
+|   |-- stage-1-files.txt
+|   |-- stage-1-report.md
+|-- kernel/
+|   |-- arch/
+|   |   |-- x86/
+|   |   |   |-- gdt.c
+|   |   |   |-- idt.c
+|   |   |   |-- interrupts.asm
+|   |   |   |-- interrupts.h
+|   |   |   |-- io.h
+|   |   |   |-- pic.c
+|   |   |   |-- pic.h
+|   |   |   |-- pit.c
+|   |   |   |-- pit.h
+|   |-- drivers/
+|   |   |-- serial.c
+|   |   |-- serial.h
+|   |-- linker.ld
+|   |-- main.c
+|   |-- panic_font.h
+|   |-- panic.c
+|   |-- panic.h
+|-- Makefile
+|-- README.md
+|-- scripts/
+|   |-- make-iso.sh
+|   |-- run-qemu.sh
+|   |-- smoke-test.sh
+|-- tools/
+|   |-- mkboot.py
+|   |-- smoke_test.py
+
+Files created or changed in Stage 1. Generated build/ intermediates omitted.

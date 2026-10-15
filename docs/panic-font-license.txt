@@ -1,0 +1,8 @@
+GathaOS panic font
+
+The glyphs in kernel/panic_font.h were hand-authored for this project.
+They are not derived from a third-party font or operating system.
+
+Permission is granted to use, copy, modify and distribute these glyphs for any
+purpose, with or without a fee, without restriction. The glyphs are provided
+without warranty of any kind.

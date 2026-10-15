@@ -1,9 +1,10 @@
 #include "boot.h"
 #include "drivers/serial.h"
-
-static void stop(void) {
-    for (;;) { __asm__ volatile("cli; hlt"); }
-}
+#include "arch/x86/interrupts.h"
+#include "arch/x86/io.h"
+#include "arch/x86/pic.h"
+#include "arch/x86/pit.h"
+#include "panic.h"
 static uint32_t pixel_color(const struct boot_info *b, uint32_t rgb) {
     return (((rgb >> 16) & 255) << b->red_position) |
            (((rgb >> 8) & 255) << b->green_position) |
@@ -31,6 +32,7 @@ static void draw_pattern(const struct boot_info *b) {
     }
 }
 void kernel_main(const struct boot_info *b) {
+    serial_init();
     klog("GathaOS booting...\r\n");
     if (b->magic != 0x47415448 || b->version != 1 || !b->e820_count ||
         b->e820_count > 64 || b->e820_address != 0x5000 ||
@@ -44,8 +46,7 @@ void kernel_main(const struct boot_info *b) {
         b->red_position % 8 || b->green_position % 8 || b->blue_position % 8 ||
         b->red_position == b->green_position ||
         b->red_position == b->blue_position || b->green_position == b->blue_position) {
-        klog("STAGE0: FAIL boot protocol\r\n");
-        stop();
+        panic("INVALID BOOT PROTOCOL", 0);
     }
     klog("BOOT: protected-mode A20=on\r\nE820: entries=");
     klog_u32(b->e820_count);
@@ -56,7 +57,42 @@ void kernel_main(const struct boot_info *b) {
     klog("x32 pitch=");
     klog_u32(b->pitch);
     klog("\r\n");
+    panic_init(b);
     draw_pattern(b);
-    klog("STAGE0: PATTERN READY\r\nSTAGE0: PASS\r\n");
-    stop();
+    gdt_init();
+    idt_init();
+    pic_init();
+    pit_init();
+    if (!interrupt_probe() || pit_ticks() == 0)
+        panic("IRQ REGISTER RESTORE FAILED", 0);
+    klog("IRQ: register-and-flags preservation PASS\r\n");
+    klog("STAGE1: TIMER RUNNING\r\n");
+    uint32_t next_report = 100;
+    for (;;) {
+        /* Test the counter with IRQs disabled, then atomically sleep with STI/HLT. */
+        __asm__ volatile("cli" : : : "memory");
+        uint32_t ticks = pit_ticks();
+        if (ticks - next_report < UINT32_C(0x80000000)) {
+            next_report += 100;
+            __asm__ volatile("sti" : : : "memory");
+            klog("PIT: ticks=");
+            klog_u32(ticks);
+            klog("\r\n");
+#if DEBUG_FAULT == 1
+            if (ticks >= 200) {
+                klog("DEBUG: deliberate divide-by-zero\r\n");
+                debug_trigger_divide();
+            }
+#elif DEBUG_FAULT == 2
+            if (ticks >= 200) {
+                klog("DEBUG: deliberate invalid data selector\r\n");
+                debug_trigger_gp();
+            }
+#endif
+            if (ticks == 300)
+                klog("STAGE1: PASS\r\n");
+        } else {
+            __asm__ volatile("sti; hlt" : : : "memory");
+        }
+    }
 }

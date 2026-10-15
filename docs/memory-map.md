@@ -1,4 +1,4 @@
-# Stage 0 physical memory map
+# Physical memory map through Stage 1
 
 | Range | Use |
 |---|---|
@@ -19,5 +19,7 @@
 | 0x100000–0x1fffff | Reserved kernel code, data and BSS (link-time bounded) |
 | Firmware-selected address | VBE linear framebuffer |
 
-Stage 0 targets a legacy PC with 256 MiB RAM. There is no paging or heap. All
+Stages 0 and 1 target a legacy PC with 256 MiB RAM. Stage 1's kernel GDT, IDT,
+timer state and panic state reside in the kernel's static data/BSS reservation.
+The IDT contains 256 eight-byte entries. There is no paging or heap. All
 subsequent memory ownership and reservations will be implemented in Stage 2.

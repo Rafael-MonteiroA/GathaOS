@@ -1,17 +1,25 @@
 #include "serial.h"
-static inline uint8_t inb(uint16_t port) {
-    uint8_t value;
-    __asm__ volatile("inb %1, %0" : "=a"(value) : "Nd"(port));
-    return value;
-}
-static inline void outb(uint16_t port, uint8_t value) {
-    __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
+#include "arch/x86/io.h"
+void serial_init(void) {
+    outb(0x3f9, 0);
+    outb(0x3fb, 0x80);
+    outb(0x3f8, 1);
+    outb(0x3f9, 0);
+    outb(0x3fb, 3);
+    outb(0x3fa, 0xc7);
+    outb(0x3fc, 3);
 }
 void klog(const char *text) {
+    uint32_t flags = irq_save();
     while (*text) {
-        while (!(inb(0x3fd) & 0x20)) { }
+        /* A missing UART must not prevent a framebuffer panic from appearing. */
+        unsigned timeout = 100000;
+        while (!(inb(0x3fd) & 0x20) && --timeout) { }
+        if (!timeout)
+            break;
         outb(0x3f8, (uint8_t)*text++);
     }
+    irq_restore(flags);
 }
 void klog_u32(uint32_t value) {
     char digits[11];
@@ -22,4 +30,11 @@ void klog_u32(uint32_t value) {
         value /= 10;
     } while (value);
     klog(&digits[i]);
+}
+void klog_hex(uint32_t value) {
+    static const char digits[] = "0123456789ABCDEF";
+    char output[11] = "0x00000000";
+    for (unsigned i = 0; i < 8; ++i)
+        output[2 + i] = digits[(value >> (28 - i * 4)) & 15];
+    klog(output);
 }

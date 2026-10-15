@@ -1,4 +1,4 @@
-"""Boot the actual ISO, verify serial markers and every captured screen pixel."""
+"""Boot Stage 1 ISOs; verify timer IRQs, exception frames and displayed pixels."""
 import hashlib
 import json
 import os
@@ -24,7 +24,36 @@ def expected_pixel(x, y, width, height):
     return 0x142238
 
 
-def verify_screen(path, width, height):
+def panic_pixels(output, width, height):
+    font = {}
+    source = Path("kernel/panic_font.h").read_text()
+    for character, values in re.findall(r"\['(.)'\]\s*=\s*\{([0-9,]+)\}", source):
+        font[character] = list(map(int, values.split(",")))
+    if len(font) != 40:
+        raise RuntimeError("Unexpected panic font table")
+    lines = output.split("GATHAOS KERNEL PANIC\n", 1)[1].split("PANIC: HALTED", 1)[0].splitlines()
+    lines.insert(0, "GATHAOS KERNEL PANIC")
+    pixels = bytearray()
+    for y in range(height):
+        pixels.extend(bytes.fromhex("991b1b" if y < 64 else "200e16") * width)
+    for number, line in enumerate(lines):
+        y = 24 if number == 0 else 84 + (number - 1) * 32
+        for column, character in enumerate(line.upper()):
+            for gy, bits in enumerate(font.get(character, [0] * 7)):
+                for gx in range(5):
+                    if not bits & (1 << (4 - gx)):
+                        continue
+                    for dy in range(2):
+                        for dx in range(2):
+                            px, py = 32 + column * 12 + gx * 2 + dx, y + gy * 2 + dy
+                            if px >= width or py >= height:
+                                raise RuntimeError("Panic text is clipped")
+                            index = (py * width + px) * 3
+                            pixels[index:index + 3] = b"\xf8\xfa\xfc"
+    return pixels
+
+
+def verify_screen(path, width, height, output, fault):
     with path.open("rb") as stream:
         if stream.readline() != b"P6\n":
             raise RuntimeError("Expected QEMU P6 screenshot")
@@ -33,13 +62,16 @@ def verify_screen(path, width, height):
         if stream.readline() != b"255\n":
             raise RuntimeError("Unexpected screen depth")
         pixels = stream.read()
-    expected = bytearray()
-    for y in range(height):
-        for x in range(width):
-            rgb = expected_pixel(x, y, width, height)
-            expected.extend(rgb.to_bytes(3, "big"))
+    if fault == "none":
+        expected = bytearray()
+        for y in range(height):
+            for x in range(width):
+                rgb = expected_pixel(x, y, width, height)
+                expected.extend(rgb.to_bytes(3, "big"))
+    else:
+        expected = panic_pixels(output, width, height)
     if pixels != expected:
-        raise RuntimeError("Screen pixels differ from the Stage 0 test pattern")
+        raise RuntimeError("Displayed pixels differ from the expected pattern or panic text")
     # Encode the unmodified QEMU screenshot as PNG using only the Python stdlib.
     def chunk(kind, payload):
         return struct.pack(">I", len(payload)) + kind + payload + struct.pack(
@@ -51,10 +83,47 @@ def verify_screen(path, width, height):
     path.with_suffix(".png").write_bytes(png)
 
 
+def verify_frame(output, fault, elf):
+    symbols = subprocess.check_output(["llvm-nm", "--defined-only", str(elf)], text=True)
+    if fault == "none":
+        if "debug_trigger_" in symbols:
+            raise RuntimeError("Normal kernel contains deliberate fault code")
+        return {}
+    fields = {name: int(value, 16) for name, value in re.findall(r"\b([A-Z0-9]+)=0x([0-9A-F]{8})", output)}
+    expected = {"VECTOR": 0 if fault == "div0" else 13, "ERROR": 0 if fault == "div0" else 0x18,
+                "CS": 8, "SS": 16, "DS": 16, "ES": 16, "FS": 16, "GS": 16}
+    symbol = "debug_divide_instruction" if fault == "div0" else "debug_gp_instruction"
+    match = re.search(r"^([0-9a-fA-F]+) [A-Za-z] " + symbol + r"$", symbols, re.M)
+    if not match:
+        raise RuntimeError("Missing expected fault instruction symbol")
+    expected["EIP"] = int(match[1], 16)
+    if fault == "div0":
+        expected.update(EAX=0x13579BDF, EBX=0x2468ACE0, ECX=0, EDX=0,
+                        ESI=0x11223344, EDI=0x55667788, EBP=0x99AABBCC)
+    else:
+        expected["EAX"] = 0x18
+    for name, value in expected.items():
+        if fields.get(name) != value:
+            raise RuntimeError(f"Bad saved register {name}: {fields.get(name)} != {value}")
+    flags_mask = 0x601 if fault == "div0" else 0x200
+    if fields.get("EFLAGS", 0) & flags_mask != flags_mask:
+        raise RuntimeError("Interrupted flags were not saved correctly")
+    if not 0x80000 <= fields.get("ESP", 0) < 0x90000 or fields["ESP"] & 3:
+        raise RuntimeError("Bad interrupted ESP")
+    if fields.get("CR0", 0) & 0x80000001 != 1:
+        raise RuntimeError("Expected protected mode with paging disabled")
+    return fields
+
+
 def main():
     iso = Path(sys.argv[1]).resolve()
-    evidence = Path("build/test").resolve()
+    fault = sys.argv[2]
+    elf = Path(sys.argv[3])
+    if fault not in ("none", "div0", "gp"):
+        raise SystemExit("Expected none, div0 or gp test mode")
+    evidence = Path(f"build/test-{fault}").resolve()
     evidence.mkdir(parents=True, exist_ok=True)
+    (evidence / "result.json").unlink(missing_ok=True)
     serial = evidence / "serial.log"
     serial.unlink(missing_ok=True)
     qemu = os.environ.get("QEMU", "qemu-system-i386")
@@ -67,12 +136,15 @@ def main():
         with (evidence / "qemu.log").open("w") as log:
             process = subprocess.Popen(command, stdout=log, stderr=log)
             try:
+                tick_times = {}
                 deadline = time.monotonic() + 30
                 while time.monotonic() < deadline:
                     output = serial.read_text() if serial.exists() else ""
-                    if "ERROR" in output or "FAIL" in output:
+                    if "BOOT ERROR" in output or "FAIL" in output or (fault == "none" and "PANIC" in output):
                         raise RuntimeError(output)
-                    if "STAGE0: PASS" in output:
+                    for value in re.findall(r"PIT: ticks=(\d+)\n", output):
+                        tick_times.setdefault(int(value), time.monotonic())
+                    if (fault == "none" and 500 in tick_times) or (fault != "none" and "PANIC: HALTED" in output):
                         break
                     if process.poll() is not None:
                         raise RuntimeError("QEMU exited before boot completed")
@@ -80,9 +152,24 @@ def main():
                 else:
                     raise RuntimeError(f"Boot timed out; serial output:\n{output}")
                 for marker in ["BOOT: stage2", "GathaOS booting...", "BOOT: protected-mode A20=on",
-                               "STAGE0: PATTERN READY", "STAGE0: PASS"]:
+                               "GDT: kernel-owned CS=0x08 DS=0x10",
+                               "IDT: 256 ring-0 interrupt gates installed",
+                               "PIC: IRQ0-15 remapped to 32-47; only IRQ0 unmasked",
+                               "PIT: channel=0 mode=2 divisor=11932 target_hz=100",
+                               "IRQ: register-and-flags preservation PASS", "STAGE1: TIMER RUNNING"]:
                     if marker not in output:
                         raise RuntimeError(f"Missing serial marker: {marker}")
+                expected_ticks = [100, 200, 300, 400, 500] if fault == "none" else [100, 200]
+                if list(tick_times) != expected_ticks:
+                    raise RuntimeError(f"Unexpected tick progression: {list(tick_times)}")
+                if fault == "none":
+                    if "STAGE1: PASS" not in output or not 2.5 < tick_times[500] - tick_times[100] < 8:
+                        raise RuntimeError("Timer cadence or success marker is invalid")
+                else:
+                    reason = "DIVIDE ERROR" if fault == "div0" else "GENERAL PROTECTION"
+                    if "PANIC: " + reason not in output or "STAGE1: PASS" in output:
+                        raise RuntimeError("Unexpected exception path")
+                fields = verify_frame(output, fault, elf)
                 if not re.search(r"E820: entries=([1-9]|[1-5][0-9]|6[0-4])\n", output):
                     raise RuntimeError("Missing valid E820 count")
                 mode = re.search(r"VBE: (1024x768|800x600)x32 pitch=(\d+)", output)
@@ -105,17 +192,27 @@ def main():
                     request("qmp_capabilities")
                     screenshot = evidence / "screen.ppm"
                     request("screendump", {"filename": str(screenshot)})
-                    verify_screen(screenshot, width, height)
+                    verify_screen(screenshot, width, height, output, fault)
+                    registers = request("human-monitor-command", {"command-line": "info registers"})
+                    (evidence / "cpu-registers.txt").write_text(registers)
+                    if fault != "none":
+                        time.sleep(0.3)
+                        if serial.read_text() != output or "HLT=1" not in registers:
+                            raise RuntimeError("Panic did not leave the CPU halted")
+                        live_flags = re.search(r"EFL=([0-9a-fA-F]+)", registers)
+                        if not live_flags or int(live_flags[1], 16) & 0x200:
+                            raise RuntimeError("Panic left IRQs enabled")
                     request("quit")
                 process.wait(timeout=5)
-                result = {"result": "PASS", "iso": str(iso),
+                result = {"result": "PASS", "mode": fault, "iso": str(iso),
                           "sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                           "resolution": [width, height], "pixels_checked": width * height,
                           "qemu": subprocess.check_output([qemu, "--version"], text=True).splitlines()[0],
-                          "command": command, "serial": output}
+                          "command": command, "serial": output, "exception_registers": fields,
+                          "tick_arrival_seconds": {str(t): round(v - tick_times[100], 3) for t, v in tick_times.items()}}
                 (evidence / "result.json").write_text(json.dumps(result, indent=2) + "\n")
                 print(output, end="")
-                print(f"SMOKE PASS: ISO boot and {width * height:,} screen pixels verified")
+                print(f"SMOKE PASS ({fault}): IRQs, saved state and {width * height:,} screen pixels verified")
             finally:
                 if process.poll() is None:
                     process.terminate()

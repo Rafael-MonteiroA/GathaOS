@@ -1,6 +1,6 @@
 bits 16
 org 0x8000
-%include "build/kernel-size.inc"
+%include "kernel-size.inc"
 %define INFO 0x4000
 %define MAP 0x5000
 %define MODE 0x6000

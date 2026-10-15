@@ -6,38 +6,60 @@ OBJCOPY := llvm-objcopy
 NASM := nasm
 PYTHON := python3
 QEMU ?= qemu-system-i386
-ISO ?= dist/gathaos-stage0-boot.iso
-CFLAGS := --target=i686-elf -std=c11 -O2 -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -Wall -Wextra -Werror -MMD -MP
-OBJECTS := build/entry.o build/main.o build/serial.o
+DEBUG_FAULT ?= none
+ifeq ($(DEBUG_FAULT),none)
+FAULT_ID := 0
+SUFFIX :=
+else ifeq ($(DEBUG_FAULT),div0)
+FAULT_ID := 1
+SUFFIX := -div0
+else ifeq ($(DEBUG_FAULT),gp)
+FAULT_ID := 2
+SUFFIX := -gp
+else
+$(error DEBUG_FAULT must be none, div0 or gp)
+endif
+BUILD := build/$(DEBUG_FAULT)
+ISO ?= dist/gathaos-stage1-core$(SUFFIX).iso
+PANIC_ISO ?= dist/gathaos-stage1-core-div0.iso
+GP_ISO ?= build/gathaos-stage1-core-gp.iso
+CFLAGS := --target=i686-elf -std=c11 -O2 -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -Wall -Wextra -Werror -MMD -MP -Ikernel -DDEBUG_FAULT=$(FAULT_ID)
+SOURCES := kernel/main.c kernel/drivers/serial.c kernel/panic.c kernel/arch/x86/gdt.c kernel/arch/x86/idt.c kernel/arch/x86/pic.c kernel/arch/x86/pit.c
+OBJECTS := $(BUILD)/entry.o $(BUILD)/interrupts.o $(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
 .PHONY: all iso run test clean
 all: iso
 iso: $(ISO)
-build:
-	mkdir -p build
-build/entry.o: kernel/arch/x86/entry.asm | build
+$(BUILD):
+	mkdir -p $@
+$(BUILD)/entry.o: kernel/arch/x86/entry.asm | $(BUILD)
 	$(NASM) -Wall -Werror -f elf32 $< -o $@
-build/main.o: kernel/main.c | build
+$(BUILD)/interrupts.o: kernel/arch/x86/interrupts.asm | $(BUILD)
+	$(NASM) -Wall -Werror -DDEBUG_FAULT=$(FAULT_ID) -f elf32 $< -o $@
+$(BUILD)/%.o: %.c
+	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
-build/serial.o: kernel/drivers/serial.c | build
-	$(CC) $(CFLAGS) -c $< -o $@
-build/kernel.elf: $(OBJECTS) kernel/linker.ld
-	$(LD) -m elf_i386 --fatal-warnings -T kernel/linker.ld -Map=build/kernel.map -o $@ $(OBJECTS)
-build/kernel.bin: build/kernel.elf
+$(BUILD)/kernel.elf: $(OBJECTS) kernel/linker.ld
+	$(LD) -m elf_i386 --fatal-warnings -T kernel/linker.ld -Map=$(BUILD)/kernel.map -o $@ $(OBJECTS)
+$(BUILD)/kernel.bin: $(BUILD)/kernel.elf
 	$(OBJCOPY) -O binary $< $@
-build/kernel-size.inc: build/kernel.bin tools/mkboot.py
+$(BUILD)/kernel-size.inc: $(BUILD)/kernel.bin tools/mkboot.py
 	$(PYTHON) tools/mkboot.py sizes $< $@
-build/stage1.bin: boot/stage1.asm boot/disk.inc | build
+$(BUILD)/stage1.bin: boot/stage1.asm boot/disk.inc | $(BUILD)
 	$(NASM) -Wall -Werror -f bin $< -o $@
-build/stage2.bin: boot/stage2.asm boot/disk.inc build/kernel-size.inc
-	$(NASM) -Wall -Werror -f bin $< -o $@
-build/boot.img: build/stage1.bin build/stage2.bin build/kernel.bin tools/mkboot.py
-	$(PYTHON) tools/mkboot.py image build $@
-$(ISO): build/boot.img scripts/make-iso.sh
-	bash scripts/make-iso.sh build/boot.img "$@"
+$(BUILD)/stage2.bin: boot/stage2.asm boot/disk.inc $(BUILD)/kernel-size.inc
+	$(NASM) -Wall -Werror -I$(BUILD)/ -f bin $< -o $@
+$(BUILD)/boot.img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin tools/mkboot.py
+	$(PYTHON) tools/mkboot.py image $(BUILD) $@
+$(ISO): $(BUILD)/boot.img scripts/make-iso.sh
+	bash scripts/make-iso.sh $(BUILD)/boot.img "$@" $(BUILD)
 run: iso
 	QEMU="$(QEMU)" bash scripts/run-qemu.sh "$(ISO)"
 test: iso
-	QEMU="$(QEMU)" bash scripts/smoke-test.sh "$(ISO)"
+	QEMU="$(QEMU)" bash scripts/smoke-test.sh "$(ISO)" $(DEBUG_FAULT) $(BUILD)/kernel.elf
+ifeq ($(DEBUG_FAULT),none)
+	$(MAKE) DEBUG_FAULT=div0 ISO="$(PANIC_ISO)" test
+	$(MAKE) DEBUG_FAULT=gp ISO="$(GP_ISO)" test
+endif
 clean:
 	rm -rf build
--include build/main.d build/serial.d
+-include $(OBJECTS:.o=.d)
