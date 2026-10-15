@@ -1,0 +1,82 @@
+gathaos/
+|-- .gitattributes
+|-- .gitignore
+|-- AGENTS.md
+|-- apps/
+|   |-- calculator/
+|   |   |-- .gitkeep
+|   |-- editor/
+|   |   |-- .gitkeep
+|   |-- files/
+|   |   |-- .gitkeep
+|   |-- paint/
+|   |   |-- .gitkeep
+|   |-- settings/
+|   |   |-- .gitkeep
+|   |-- sysmon/
+|   |   |-- .gitkeep
+|   |-- terminal/
+|   |   |-- .gitkeep
+|-- boot/
+|   |-- disk.inc
+|   |-- stage1.asm
+|   |-- stage2.asm
+|-- dist/
+|   |-- build-verification.log
+|   |-- gathaos-stage0-boot.iso
+|   |-- stage0-evidence/
+|   |   |-- el-torito.txt
+|   |   |-- elf-header.txt
+|   |   |-- qemu.log
+|   |   |-- result.json
+|   |   |-- screen.png
+|   |   |-- screen.ppm
+|   |   |-- serial.log
+|   |   |-- undefined-symbols.txt
+|-- docs/
+|   |-- architecture.md
+|   |-- boot-protocol.md
+|   |-- gathafs.md
+|   |-- memory-map.md
+|   |-- stage-0-files.txt
+|   |-- stage-0-report.md
+|   |-- syscalls.md
+|-- gui/
+|   |-- gfx/
+|   |   |-- .gitkeep
+|   |-- toolkit/
+|   |   |-- .gitkeep
+|   |-- wm/
+|   |   |-- .gitkeep
+|-- kernel/
+|   |-- arch/
+|   |   |-- x86/
+|   |   |   |-- entry.asm
+|   |-- boot.h
+|   |-- drivers/
+|   |   |-- serial.c
+|   |   |-- serial.h
+|   |-- fs/
+|   |   |-- .gitkeep
+|   |-- linker.ld
+|   |-- main.c
+|   |-- mm/
+|   |   |-- .gitkeep
+|   |-- sched/
+|   |   |-- .gitkeep
+|   |-- syscall/
+|   |   |-- .gitkeep
+|-- libgatha/
+|   |-- .gitkeep
+|-- Makefile
+|-- README.md
+|-- scripts/
+|   |-- make-iso.sh
+|   |-- run-qemu.sh
+|   |-- setup-deps.sh
+|   |-- smoke-test.sh
+|-- tools/
+|   |-- mkboot.py
+|   |-- smoke_test.py
+
+Generated build/ intermediates and Git internals are omitted.
