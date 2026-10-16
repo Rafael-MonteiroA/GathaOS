@@ -1,0 +1,210 @@
+gathaos/
+|-- Makefile
+|-- README.md
+|-- apps/
+|   `-- demo/
+|       `-- main.c
+|-- dist/
+|   |-- gathaos-stage5-disk.img
+|   |-- gathaos-stage5-storage.iso
+|   |-- stage5-SHA256SUMS.txt
+|   |-- stage5-build-verification.log
+|   `-- stage5-evidence/
+|       |-- el-torito.txt
+|       |-- test-div0-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-gp-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-none-256-set1/
+|       |   |-- animated.png
+|       |   |-- animated.ppm
+|       |   |-- button-left.png
+|       |   |-- button-left.ppm
+|       |   |-- button-middle.png
+|       |   |-- button-middle.ppm
+|       |   |-- button-right.png
+|       |   |-- button-right.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- disk.img
+|       |   |-- final.png
+|       |   |-- final.ppm
+|       |   |-- qemu.log
+|       |   |-- repeat.png
+|       |   |-- repeat.ppm
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- scrolled.png
+|       |   |-- scrolled.ppm
+|       |   |-- serial.log
+|       |   |-- typed.png
+|       |   `-- typed.ppm
+|       |-- test-none-256-set2/
+|       |   |-- animated.png
+|       |   |-- animated.ppm
+|       |   |-- button-left.png
+|       |   |-- button-left.ppm
+|       |   |-- button-middle.png
+|       |   |-- button-middle.ppm
+|       |   |-- button-right.png
+|       |   |-- button-right.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- disk.img
+|       |   |-- elf.txt
+|       |   |-- final.png
+|       |   |-- final.ppm
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- repeat.png
+|       |   |-- repeat.ppm
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- scrolled.png
+|       |   |-- scrolled.ppm
+|       |   |-- serial.log
+|       |   |-- typed.png
+|       |   |-- typed.ppm
+|       |   `-- undefined-symbols.txt
+|       |-- test-none-512-set2/
+|       |   |-- animated.png
+|       |   |-- animated.ppm
+|       |   |-- button-left.png
+|       |   |-- button-left.ppm
+|       |   |-- button-middle.png
+|       |   |-- button-middle.ppm
+|       |   |-- button-right.png
+|       |   |-- button-right.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- disk.img
+|       |   |-- final.png
+|       |   |-- final.ppm
+|       |   |-- qemu.log
+|       |   |-- repeat.png
+|       |   |-- repeat.ppm
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- scrolled.png
+|       |   |-- scrolled.ppm
+|       |   |-- serial.log
+|       |   |-- typed.png
+|       |   `-- typed.ppm
+|       |-- test-none-64-set2/
+|       |   |-- animated.png
+|       |   |-- animated.ppm
+|       |   |-- button-left.png
+|       |   |-- button-left.ppm
+|       |   |-- button-middle.png
+|       |   |-- button-middle.ppm
+|       |   |-- button-right.png
+|       |   |-- button-right.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- disk.img
+|       |   |-- final.png
+|       |   |-- final.ppm
+|       |   |-- qemu.log
+|       |   |-- repeat.png
+|       |   |-- repeat.ppm
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- scrolled.png
+|       |   |-- scrolled.ppm
+|       |   |-- serial.log
+|       |   |-- typed.png
+|       |   `-- typed.ppm
+|       |-- test-page-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       `-- test-readonly-256-set2/
+|           |-- cpu-registers.txt
+|           |-- elf.txt
+|           |-- kernel.map
+|           |-- qemu.log
+|           |-- result.json
+|           |-- screen.png
+|           |-- screen.ppm
+|           |-- serial.log
+|           `-- undefined-symbols.txt
+|-- docs/
+|   |-- gathafs.md
+|   |-- stage-5-files.txt
+|   |-- stage-5-report.md
+|   `-- syscalls.md
+|-- kernel/
+|   |-- arch/
+|   |   `-- x86/
+|   |       `-- io.h
+|   |-- drivers/
+|   |   |-- ata.c
+|   |   |-- ata.h
+|   |   |-- rtc.c
+|   |   `-- rtc.h
+|   |-- fs/
+|   |   |-- fs.h
+|   |   |-- gathafs.c
+|   |   |-- selftest.c
+|   |   `-- vfs.c
+|   |-- graphics_demo.c
+|   |-- main.c
+|   |-- sched/
+|   |   |-- demo.c
+|   |   |-- task.c
+|   |   `-- task.h
+|   `-- syscall/
+|       `-- syscall.c
+|-- libgatha/
+|   `-- api.h
+|-- rootfs/
+|   |-- Documents/
+|   |   `-- Welcome.txt
+|   `-- Readme.txt
+|-- scripts/
+|   |-- make-iso.sh
+|   |-- run-qemu.sh
+|   `-- smoke-test.sh
+`-- tools/
+    |-- mkgathafs.py
+    |-- persistence_test.py
+    |-- smoke_test.py
+    `-- test_gathafs.py

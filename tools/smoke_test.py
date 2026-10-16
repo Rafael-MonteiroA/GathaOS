@@ -11,6 +11,8 @@ import sys
 import tempfile
 import time
 import zlib
+import shutil
+from persistence_test import verify as verify_persistence
 from input_test import exercise
 
 
@@ -139,12 +141,15 @@ def main():
     serial = evidence / "serial.log"
     serial.unlink(missing_ok=True)
     qemu = os.environ.get("QEMU", "qemu-system-i386")
+    disk = evidence / 'disk.img'
+    if fault == 'none': shutil.copyfile(os.environ.get('DISK','dist/gathaos-stage5-disk.img'),disk)
     with tempfile.TemporaryDirectory(prefix="gatha-qmp-") as temporary:
         endpoint = str(Path(temporary) / "qmp.sock")
         command = [qemu, "-machine", "pc,accel=tcg", "-m", f"{ram}M", "-vga", "std",
                    "-cdrom", str(iso), "-boot", "d", "-display", "none", "-monitor", "none",
                    "-serial", f"file:{serial}", "-qmp", f"unix:{endpoint},server=on,wait=off",
                    "-no-reboot", "-no-shutdown", "-nic", "none"]
+        if fault == 'none': command += ['-drive',f'file={disk},format=raw,if=ide,index=0']
         with (evidence / "qemu.log").open("w") as log:
             process = subprocess.Popen(command, stdout=log, stderr=log)
             try:
@@ -254,10 +259,16 @@ def main():
                             raise RuntimeError("Panic left IRQs enabled")
                     request("quit")
                 process.wait(timeout=5)
+                persistence = {}
+                if fault == 'none':
+                    if 'USERFS: all file syscalls PASS' not in output or 'STAGE5: DISK PASS' not in output:
+                        raise RuntimeError('Missing filesystem syscall results')
+                    persistence = verify_persistence(qemu,iso,disk,evidence,ram)
                 result = {"result": "PASS", "mode": fault, "ram_mib": ram, "iso": str(iso),
                           "sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                           "resolution": [width, height], "pixels_checked": width * height,
                           "input_test": input_result,
+                          "persistence_test": persistence,
                           "qemu": subprocess.check_output([qemu, "--version"], text=True).splitlines()[0],
                           "command": command, "serial": output, "exception_registers": fields,
                           "usable_frames": total, "final_free_frames": int(final[1]),

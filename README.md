@@ -1,7 +1,9 @@
 # GathaOS
 
 GathaOS is an original, freestanding x86 operating system written in NASM and C.
-**Stage 4 — Tasks and User Mode** adds preemptive tasks, ring 3, syscalls and GEX
+**Stage 5 — Storage and GathaFS** adds persistent IDE storage, an original disk
+format, a host image builder and file syscalls. Stage 4 provides preemptive tasks,
+ring 3, syscalls and GEX
 executables. Two isolated user programs animate while the input lab stays usable.
 The graphics/input layer provides a graphical test screen,
 double buffering, drawing primitives, an original bitmap font, PS/2 keyboard
@@ -26,38 +28,43 @@ builds run in a native temporary checkout, with verified copies returned here.
 
 `make clean` removes `build/` and preserves previous ISOs. Existing release files
 are immutable: an identical rebuild verifies them; different bytes require a
-fresh filename, such as `ISO=dist/gathaos-stage4-tasks-fix1.iso`.
+fresh filename, such as `ISO=dist/gathaos-stage5-storage-fix1.iso`.
 
 ## Run and use
 
 ```sh
-qemu-system-i386 -cdrom dist/gathaos-stage4-tasks.iso -boot d -m 256M -vga std -serial stdio -no-reboot
+qemu-system-i386 -cdrom dist/gathaos-stage5-storage.iso -drive file=dist/gathaos-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -serial stdio -no-reboot
 ```
 
 This works in PowerShell with QEMU on PATH, or Ubuntu with a display. WSL graphical
-runs need WSLg or another display; automated tests run headless. No hard disk is
-required. Click inside QEMU to capture input; Ctrl+Alt releases the capture.
+runs need WSLg or another display; automated tests run headless. The companion
+GathaFS IDE disk is required. `make iso` creates the runtime disk only if absent;
+existing disk data is preserved. Click QEMU to capture input; Ctrl+Alt releases it.
 
 Type into the large text area using a **US keyboard layout**. Enter, Backspace,
 Tab, Shift, Caps Lock, Ctrl+L (clear), wrapping and scrolling work. Hold a key to
 repeat. Move the mouse and press its left, middle and right buttons; the status
 indicators respond. This is a kernel driver demonstration; there is no desktop,
-window manager or file saving yet. Demo applications now execute in user mode.
+window manager yet. File operations now work through user-mode syscalls and boot
+tests; an interactive file manager/editor will arrive in the application stage.
 The user has authorized sequential completion of the remaining stages.
 
 VirtualBox / VMware: Other 32-bit OS, legacy BIOS, EFI disabled, 256 MiB RAM,
 VGA-compatible graphics (VBoxVGA in VirtualBox), at least 8 MiB video RAM, 3D off,
-ISO attached to the boot optical drive, PS/2 keyboard/mouse and no disk. These
+ISO attached to the boot optical drive, PS/2 input and the GathaFS disk attached
+as primary-master IDE (convert the raw image to a supported disk container). These
 hypervisors remain untested; QEMU standard VGA is the verified target.
 
 ## Tests
 
-`make test` performs eight actual ISO boots:
+`make test` performs twelve actual ISO boots and host filesystem tests:
 
 1. Normal set-2 keyboard kernel with 256, 64 and 512 MiB RAM.
 2. Native set-1 keyboard kernel with 256 MiB RAM.
 3. Deliberate null-page write, read-only-page write, divide error and general
    protection with 256 MiB RAM, behind separate `DEBUG_FAULT` options.
+4. A second fresh QEMU process for each normal configuration, using the written
+   test disk to verify persistence. The host independently parses its data/bitmap.
 
 Every boot checks memory stress, frame accounting and timer/IRQ behavior.
 Normal boots verify user animations, preemption, sleep, yield, kernel threads,
@@ -94,4 +101,5 @@ Read `docs/stage-4-report.md`, `docs/gex.md`, `docs/syscalls.md`,
 `docs/memory-map.md`, `docs/boot-protocol.md` and `docs/interrupts.md`. Font and
 cursor permissions are in `docs/graphics-font-license.txt`; the panic font's
 permission is in `docs/panic-font-license.txt`. Previous reports and ISOs remain.
-Stage 5 will add the original filesystem and persistent IDE storage next.
+Read `docs/stage-5-report.md` and `docs/gathafs.md` for the storage format, disk
+usage and persistence evidence. Stage 6 will add desktop windows and the toolkit.

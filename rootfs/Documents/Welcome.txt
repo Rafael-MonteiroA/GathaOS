@@ -1,0 +1,4 @@
+GathaOS documents
+=================
+
+This is a real file stored on the GathaFS IDE disk.

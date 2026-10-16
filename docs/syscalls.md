@@ -14,6 +14,25 @@ the kernel is preempted between syscalls, not in their critical sections.
 | 4 | log | user pointer, length <=1024 | bytes, or -14 |
 | 5 | pid | — | current process identifier |
 | 6 | demo | animation frame | 0, or -1 for a task without a demo lane |
+| 7 | open | path, flags | descriptor 0..7 |
+| 8 | read | fd, writable buffer, bytes | bytes read |
+| 9 | write | fd, readable buffer, bytes | bytes written |
+| 10 | close | fd | 0 |
+| 11 | seek | fd, signed offset, whence 0=set/1=current/2=end | new position |
+| 12 | readdir | path, index, writable g_dirent pointer | 1 entry, 0 end |
+| 13 | mkdir | path | 0 |
+| 14 | unlink | path | 0 |
+| 15 | stat | path, writable g_stat pointer | 0 |
+| 16 | rename | source path, destination path | 0 |
+| 17 | sync | — | 0 after ATA cache flush |
+
+Open flags: READ=1, WRITE=2, CREATE=4, TRUNC=8 (TRUNC requires WRITE). Paths are
+absolute, NUL-terminated and limited to 255 bytes. Seek cannot create holes.
+`g_stat` is four uint32 words: type (file=1/directory=2), size, created, modified.
+`g_dirent` is a 40-byte name followed by g_stat. Typical errors are -2 missing,
+-5 I/O, -9 bad descriptor, -13 access mode, -14 bad user pointer, -16 busy,
+-17 exists, -20 not a directory, -21 is a directory, -22 invalid, -24 descriptor
+limit, -28 capacity, -36 name/path too long, -39 non-empty and -74 bad volume.
 
 Unknown calls return -38. Invalid lengths/delays return -22 where applicable.
 User ranges must lie wholly in 0x00400000..0x007fffff, with user-present PTEs

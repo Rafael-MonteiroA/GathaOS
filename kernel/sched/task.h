@@ -1,6 +1,7 @@
 #ifndef GATHA_TASK_H
 #define GATHA_TASK_H
 #include "arch/x86/interrupts.h"
+#include "fs/fs.h"
 #define TASK_MAX 16
 enum { TASK_EMPTY, TASK_READY, TASK_SLEEPING, TASK_DEAD };
 struct task {
@@ -10,6 +11,7 @@ struct task {
     void *stack;
     void (*function)(void);
     char name[24];
+    struct vfs_fd files[8];
 };
 void scheduler_init(void);
 int task_spawn(const void *image, unsigned size, unsigned argument, const char *name);

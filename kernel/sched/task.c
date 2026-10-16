@@ -113,6 +113,7 @@ struct interrupt_frame *task_exit(struct interrupt_frame *f, int code) {
 void task_reap(void) {
     uint32_t flags = irq_save();
     for (unsigned i = 1; i < TASK_MAX; ++i) if (i != current && tasks[i].state == TASK_DEAD) {
+        vfs_close_all(tasks[i].files);
         paging_user_destroy(tasks[i].directory); kfree(tasks[i].stack); memset(&tasks[i],0,sizeof(tasks[i]));
     }
     irq_restore(flags);

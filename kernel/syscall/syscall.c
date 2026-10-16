@@ -4,8 +4,56 @@
 #include "arch/x86/pit.h"
 #include "drivers/serial.h"
 #include "../libgatha/api.h"
+static int path_copy(uint32_t address, char path[256]) {
+    for (unsigned i = 0; i < 256; ++i) {
+        if (!user_range(address+i,1,0)) return -14;
+        path[i] = *(const char *)(uintptr_t)(address+i);
+        if (!path[i]) return 0;
+    }
+    return -36;
+}
+static int file_call(struct interrupt_frame *f) {
+    struct task *t = task_current();
+    char path[256], second[256];
+    if (f->eax == SYS_SYNC) return fs_sync();
+    if (f->eax == SYS_CLOSE) return vfs_close(t->files,f->ebx);
+    if (f->eax == SYS_READ || f->eax == SYS_WRITE || f->eax == SYS_SEEK) {
+        if (f->ebx >= 8 || !t->files[f->ebx].used) return -9;
+        struct vfs_fd *fd = &t->files[f->ebx];
+        if (f->eax == SYS_SEEK) {
+            if (f->edx > 2) return -22;
+            int64_t base = f->edx == 0 ? 0 : f->edx == 1 ? fd->offset : fs_node(fd->inode)->size;
+            int64_t position = base + (int32_t)f->ecx;
+            if (position < 0 || position > fs_node(fd->inode)->size) return -22;
+            fd->offset = (unsigned)position; return (int)position;
+        }
+        int write = f->eax == SYS_WRITE;
+        if (!(fd->flags & (write ? G_WRITE : G_READ))) return -13;
+        if (f->edx > FS_MAX_SIZE || !user_range(f->ecx,f->edx,!write)) return -14;
+        int result = write ? fs_write(fd->inode,fd->offset,(const void *)(uintptr_t)f->ecx,f->edx) :
+                             fs_read(fd->inode,fd->offset,(void *)(uintptr_t)f->ecx,f->edx);
+        if (result > 0) fd->offset += (unsigned)result;
+        return result;
+    }
+    int result = path_copy(f->ebx,path); if (result < 0) return result;
+    switch (f->eax) {
+    case SYS_OPEN: return vfs_open(t->files,path,f->ecx);
+    case SYS_MKDIR: result = fs_create(path,G_DIR); return result < 0 ? result : 0;
+    case SYS_UNLINK: return fs_unlink(path);
+    case SYS_RENAME:
+        result = path_copy(f->ecx,second); return result < 0 ? result : fs_rename(path,second);
+    case SYS_STAT:
+        if (!user_range(f->ecx,sizeof(struct g_stat),1)) return -14;
+        return fs_stat(path,(struct g_stat *)(uintptr_t)f->ecx);
+    case SYS_READDIR:
+        if (!user_range(f->edx,sizeof(struct g_dirent),1)) return -14;
+        return fs_readdir(path,f->ecx,(struct g_dirent *)(uintptr_t)f->edx);
+    default: return -38;
+    }
+}
 struct interrupt_frame *syscall_dispatch(struct interrupt_frame *f) {
     struct task *t = task_current();
+    if (f->eax >= SYS_OPEN && f->eax <= SYS_SYNC) { f->eax = (uint32_t)file_call(f); return f; }
     switch (f->eax) {
     case SYS_TICKS: f->eax = pit_ticks(); break;
     case SYS_PID: f->eax = t->pid; break;

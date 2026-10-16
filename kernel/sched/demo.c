@@ -18,7 +18,7 @@ void tasks_demo_init(void) {
     if (task_spawn(demo_gex,demo_gex_size,1,"animation-a") < 0 ||
         task_spawn(demo_gex,demo_gex_size,2,"animation-b") < 0 || task_kernel(worker,"worker") < 0)
         panic("TASK START FAILED",0);
-    for (unsigned i = 10; i <= 13; ++i)
+    for (unsigned i = 10; i <= 14; ++i)
         if (task_spawn(demo_gex,demo_gex_size,i,"isolation-test") < 0) panic("TEST TASK START FAILED",0);
     if (task_spawn(demo_gex,16,0,"invalid") >= 0) panic("INVALID GEX ACCEPTED",0);
     klog("GEXTEST: truncated image rejected PASS\r\nSTAGE4: READY\r\n");

@@ -78,6 +78,8 @@ void kernel_main(const struct boot_info *b) {
     heap_init();
     memory_self_test();
 #if DEBUG_FAULT == 0
+    if (fs_mount()) panic("GATHAFS MOUNT FAILED - ATTACH IDE DISK",0);
+    fs_self_test();
     graphics_demo_init(b);
 #endif
     pic_init();

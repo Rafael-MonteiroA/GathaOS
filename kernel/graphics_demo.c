@@ -100,7 +100,7 @@ void graphics_demo_init(const struct boot_info *boot) {
     gfx_text(52, 32, "GathaOS", 0xf1f5f9, 3);
     gfx_text(34, 100, "An original operating system. Built from the first instruction.", 0xa8bed4, 1);
     gfx_round_rect(width - 230, 36, 198, 32, 8, 0x164a4b);
-    gfx_text(width - 214, 44, "STAGE 04 / TASK LAB", 0x8ff5d5, 1);
+    gfx_text(width - 214, 44, "STAGE 05 / STORAGE", 0x8ff5d5, 1);
     int card = (width - 96) / 3;
     for (int i = 0; i < 3; ++i) gfx_round_rect(32 + i * (card + 16), 160, card, 120, 12, 0x18283d);
     gfx_text(48, 176, "01  SHAPES + LINES", 0x94a3b8, 1);

@@ -28,8 +28,9 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage4-tasks$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage4-tasks-page.iso
+ISO ?= dist/gathaos-stage5-storage$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage5-storage-page.iso
+DISK ?= dist/gathaos-stage5-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -39,6 +40,7 @@ SOURCES := kernel/main.c kernel/drivers/serial.c kernel/panic.c kernel/arch/x86/
 CFLAGS += -DPS2_SET=$(PS2_SET)
 SOURCES += kernel/drivers/framebuffer.c kernel/drivers/ps2.c kernel/drivers/keyboard.c kernel/drivers/mouse.c kernel/drivers/input_selftest.c kernel/graphics_demo.c gui/gfx/gfx.c
 SOURCES += kernel/sched/task.c kernel/sched/demo.c kernel/syscall/syscall.c libgatha/string.c
+SOURCES += kernel/drivers/ata.c kernel/drivers/rtc.c kernel/fs/gathafs.c kernel/fs/vfs.c kernel/fs/selftest.c
 OBJECTS := $(BUILD)/entry.o $(BUILD)/interrupts.o $(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
 OBJECTS += $(BUILD)/demo-gex.o
 .PHONY: all iso run test test-boot clean
@@ -54,7 +56,11 @@ $(BUILD)/demo.gex: $(BUILD)/demo.elf tools/gex.py
 	$(PYTHON) tools/gex.py $< $(BUILD)/demo.bin $@ demo_gex
 $(BUILD)/demo-gex.o: $(BUILD)/demo.gex
 	$(CC) $(CFLAGS) -c $(BUILD)/demo.c -o $@
-iso: $(ISO)
+iso: $(ISO) $(DISK) dist/gathaos-disk.img
+$(DISK): tools/mkgathafs.py $(shell find rootfs -type f)
+	$(PYTHON) tools/mkgathafs.py rootfs "$@"
+dist/gathaos-disk.img: $(DISK)
+	test -e "$@" || cp "$(DISK)" "$@"
 $(BUILD):
 	mkdir -p $@
 $(BUILD)/entry.o: kernel/arch/x86/entry.asm | $(BUILD)
@@ -79,18 +85,19 @@ $(BUILD)/boot.img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin t
 $(ISO): $(BUILD)/boot.img scripts/make-iso.sh
 	bash scripts/make-iso.sh $(BUILD)/boot.img "$@" $(BUILD)
 run: iso
-	QEMU="$(QEMU)" bash scripts/run-qemu.sh "$(ISO)"
+	QEMU="$(QEMU)" bash scripts/run-qemu.sh "$(ISO)" dist/gathaos-disk.img
 test-boot: iso
-	QEMU="$(QEMU)" PS2_SET=$(PS2_SET) bash scripts/smoke-test.sh "$(ISO)" $(DEBUG_FAULT) $(BUILD)/kernel.elf $(RAM)
+	QEMU="$(QEMU)" PS2_SET=$(PS2_SET) DISK="$(DISK)" bash scripts/smoke-test.sh "$(ISO)" $(DEBUG_FAULT) $(BUILD)/kernel.elf $(RAM)
 test: test-boot
+	$(PYTHON) tools/test_gathafs.py
 ifeq ($(DEBUG_FAULT),none)
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage4-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage5-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage4-tasks-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage4-tasks-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage4-tasks-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage5-storage-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage5-storage-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage5-storage-gp.iso test-boot
 endif
 clean:
 	rm -rf build
