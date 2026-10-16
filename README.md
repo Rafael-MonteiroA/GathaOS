@@ -72,8 +72,8 @@ verified on Windows. VMware remains untested.
 
 ## Verification
 
-The Stage 8 full suite is being rerun after adding synchronization to the host
-drag test. See docs/stage-8-report.md for the final release verification status.
+Stage 8 passed the full suite, including a ten-minute desktop soak.
+See docs/stage-8-report.md for measured results and limits.
 
 `make test` runs actual QEMU TCG boots: 64/256/512 MiB, native keyboard sets 1/2,
 fresh-process persistence boots, four deliberate kernel faults, clean halt,
