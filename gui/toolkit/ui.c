@@ -14,8 +14,11 @@ int ui_poll(struct ui *u) {
     if (u->e.type==G_CLOSE) { ui_close(u); g_exit(0); }
     return 1;
 }
+static void flush(struct ui *u,unsigned end) {
+    g_call(SYS_DRAW,(unsigned)u->window,(uint32_t)(uintptr_t)u->commands,(unsigned)u->count,end,0);u->count=0;
+}
 static struct g_draw *command(struct ui *u,int type,int x,int y,int w,int h,unsigned color) {
-    if (u->count==256) ui_end(u);
+    if (u->count==256) flush(u,0);
     struct g_draw *d=&u->commands[u->count++];
     *d=(struct g_draw){.type=type,.x=x,.y=y,.w=w,.h=h,.color=color}; return d;
 }
@@ -31,11 +34,11 @@ void ui_label(struct ui *u,int x,int y,const char *text,unsigned color) {
         if (*text=='\n') { ++text; x=origin; y+=20; }
     }
 }
-void ui_begin(struct ui *u) { u->count=0; ui_rect(u,0,0,u->width,u->height,UI_BG); }
+void ui_begin(struct ui *u) { u->count=0;g_call(SYS_DRAW,(unsigned)u->window,0,0,1,0);ui_rect(u,0,0,u->width,u->height,UI_BG); }
 void ui_end(struct ui *u) {
-    if (u->count) g_call(SYS_DRAW,(unsigned)u->window,(uint32_t)(uintptr_t)u->commands,(unsigned)u->count,0,0);
-    u->count=0;
+    flush(u,2);
 }
+void ui_bitmap(struct ui *u,const struct g_bitmap *bitmap) { flush(u,0);g_call(SYS_BITMAP,(unsigned)u->window,(uint32_t)(uintptr_t)bitmap,0,0,0); }
 int ui_hit(struct ui *u,int x,int y,int w,int h) {
     return u->e.type==G_MOUSE && u->e.pressed==1 && u->e.x>=x && u->e.x<x+w && u->e.y>=y && u->e.y<y+h;
 }

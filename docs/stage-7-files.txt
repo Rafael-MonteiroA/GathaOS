@@ -1,0 +1,248 @@
+gathaos/
+|-- Makefile
+|-- README.md
+|-- apps/
+|   |-- about/
+|   |   `-- main.c
+|   |-- calculator/
+|   |   `-- main.c
+|   |-- common.c
+|   |-- common.h
+|   |-- editor/
+|   |   `-- main.c
+|   |-- files/
+|   |   `-- main.c
+|   |-- paint/
+|   |   `-- main.c
+|   |-- settings/
+|   |   `-- main.c
+|   |-- sysmon/
+|   |   `-- main.c
+|   |-- terminal/
+|   |   `-- main.c
+|   `-- widgets/
+|       `-- main.c
+|-- dist/
+|   |-- gathaos-stage7-apps.iso
+|   |-- gathaos-stage7-disk.img
+|   |-- stage7-SHA256SUMS.txt
+|   |-- stage7-build-verification.log
+|   `-- stage7-evidence/
+|       |-- disk-recheck.txt
+|       |-- el-torito.txt
+|       |-- test-div0-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-gp-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-none-256-set1/
+|       |   |-- about.png
+|       |   |-- about.ppm
+|       |   |-- calculator.png
+|       |   |-- calculator.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- disk.img
+|       |   |-- editor-reopened.png
+|       |   |-- editor-reopened.ppm
+|       |   |-- editor-saved.png
+|       |   |-- editor-saved.ppm
+|       |   |-- file-open-editor.png
+|       |   |-- file-open-editor.ppm
+|       |   |-- files.png
+|       |   |-- files.ppm
+|       |   |-- gex-from-disk.png
+|       |   |-- gex-from-disk.ppm
+|       |   |-- paint-reopened.png
+|       |   |-- paint-reopened.ppm
+|       |   |-- paint-saved.png
+|       |   |-- paint-saved.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- settings.png
+|       |   |-- settings.ppm
+|       |   |-- system-monitor.png
+|       |   |-- system-monitor.ppm
+|       |   |-- terminal.png
+|       |   `-- terminal.ppm
+|       |-- test-none-256-set2/
+|       |   |-- about.png
+|       |   |-- about.ppm
+|       |   |-- calculator.png
+|       |   |-- calculator.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- disk.img
+|       |   |-- editor-reopened.png
+|       |   |-- editor-reopened.ppm
+|       |   |-- editor-saved.png
+|       |   |-- editor-saved.ppm
+|       |   |-- elf.txt
+|       |   |-- file-open-editor.png
+|       |   |-- file-open-editor.ppm
+|       |   |-- files.png
+|       |   |-- files.ppm
+|       |   |-- gex-from-disk.png
+|       |   |-- gex-from-disk.ppm
+|       |   |-- kernel.map
+|       |   |-- paint-reopened.png
+|       |   |-- paint-reopened.ppm
+|       |   |-- paint-saved.png
+|       |   |-- paint-saved.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- settings.png
+|       |   |-- settings.ppm
+|       |   |-- system-monitor.png
+|       |   |-- system-monitor.ppm
+|       |   |-- terminal.png
+|       |   |-- terminal.ppm
+|       |   `-- undefined-symbols.txt
+|       |-- test-none-512-set2/
+|       |   |-- about.png
+|       |   |-- about.ppm
+|       |   |-- calculator.png
+|       |   |-- calculator.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- disk.img
+|       |   |-- editor-reopened.png
+|       |   |-- editor-reopened.ppm
+|       |   |-- editor-saved.png
+|       |   |-- editor-saved.ppm
+|       |   |-- file-open-editor.png
+|       |   |-- file-open-editor.ppm
+|       |   |-- files.png
+|       |   |-- files.ppm
+|       |   |-- gex-from-disk.png
+|       |   |-- gex-from-disk.ppm
+|       |   |-- paint-reopened.png
+|       |   |-- paint-reopened.ppm
+|       |   |-- paint-saved.png
+|       |   |-- paint-saved.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- settings.png
+|       |   |-- settings.ppm
+|       |   |-- system-monitor.png
+|       |   |-- system-monitor.ppm
+|       |   |-- terminal.png
+|       |   `-- terminal.ppm
+|       |-- test-none-64-set2/
+|       |   |-- about.png
+|       |   |-- about.ppm
+|       |   |-- calculator.png
+|       |   |-- calculator.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- disk.img
+|       |   |-- editor-reopened.png
+|       |   |-- editor-reopened.ppm
+|       |   |-- editor-saved.png
+|       |   |-- editor-saved.ppm
+|       |   |-- file-open-editor.png
+|       |   |-- file-open-editor.ppm
+|       |   |-- files.png
+|       |   |-- files.ppm
+|       |   |-- gex-from-disk.png
+|       |   |-- gex-from-disk.ppm
+|       |   |-- paint-reopened.png
+|       |   |-- paint-reopened.ppm
+|       |   |-- paint-saved.png
+|       |   |-- paint-saved.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- settings.png
+|       |   |-- settings.ppm
+|       |   |-- system-monitor.png
+|       |   |-- system-monitor.ppm
+|       |   |-- terminal.png
+|       |   `-- terminal.ppm
+|       |-- test-page-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-power-reboot/
+|       |   |-- disk.img
+|       |   |-- qemu.log
+|       |   |-- rebooted.png
+|       |   |-- rebooted.ppm
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-power-shutdown/
+|       |   |-- disk.img
+|       |   |-- qemu.log
+|       |   |-- registers.txt
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- shutdown.png
+|       |   `-- shutdown.ppm
+|       `-- test-readonly-256-set2/
+|           |-- cpu-registers.txt
+|           |-- elf.txt
+|           |-- kernel.map
+|           |-- qemu.log
+|           |-- result.json
+|           |-- screen.png
+|           |-- screen.ppm
+|           |-- serial.log
+|           `-- undefined-symbols.txt
+|-- docs/
+|   |-- applications.md
+|   |-- stage-7-files.txt
+|   `-- stage-7-report.md
+|-- gui/
+|   |-- toolkit/
+|   |   |-- ui.c
+|   |   `-- ui.h
+|   `-- wm/
+|       |-- launcher.c
+|       |-- protocol.h
+|       |-- wm.c
+|       `-- wm.h
+|-- kernel/
+|   |-- power.c
+|   |-- power.h
+|   |-- sched/
+|   |   `-- task.h
+|   `-- syscall/
+|       `-- syscall.c
+|-- libgatha/
+|   `-- arith.c
+|-- scripts/
+|   |-- make-iso.sh
+|   `-- run-qemu.sh
+`-- tools/
+    |-- apps_test.py
+    |-- desktop_test.py
+    |-- power_test.py
+    `-- smoke_test.py

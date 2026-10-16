@@ -18,7 +18,7 @@ int app_main(unsigned argument) {
         if (ui_menu(&u,menus,2)==1) dialog=1;
         ui_label(&u,18,44,"Make yourself at home.",UI_INK);
         if (!dialog && !context) {
-            if (ui_button(&u,18,74,130,"New window")) { ui_launch(0); g_puts("WIDGET: launch\n"); }
+            if (ui_button(&u,18,74,130,"New window")) { ui_launch(APP_WIDGETS); g_puts("WIDGET: launch\n"); }
             if (ui_button(&u,164,74,130,"Show dialog")) dialog=1;
         } else { ui_rect(&u,18,74,276,28,0xc8d6e3); }
         struct g_event saved=u.e;
@@ -31,7 +31,7 @@ int app_main(unsigned argument) {
         ui_label(&u,318,270,checked?"Preview on":"Preview off",UI_ACCENT);
         ui_label(&u,18,u.height-24,"Right-click for menu. Help opens a dialog.",0x61768a);
         u.e=saved;
-        if (context) { const char *actions[]={"New window","About"}; int action=ui_context(&u,cx,cy,actions,2); if(action>=0){ if(!action)ui_launch(0);else dialog=1; context=0; } }
+        if (context) { const char *actions[]={"New window","About"}; int action=ui_context(&u,cx,cy,actions,2); if(action>=0){ if(!action)ui_launch(APP_WIDGETS);else dialog=1; context=0; } }
         if (dialog && ui_dialog(&u,"GathaOS toolkit","Original widgets.\nRunning in user mode.")) { dialog=0; g_puts("WIDGET: dialog closed\n"); }
         ui_end(&u);
     }

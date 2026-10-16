@@ -36,9 +36,9 @@ class Desktop:
         self.event('key',{'down':down,'key':{'type':'qcode','data':name}});time.sleep(.04)
     def tap(self,name): self.key(name,True);self.key(name,False)
     def type(self,text):
-        mapping={' ':'spc','\n':'ret','.':'dot','/':'slash','-':'minus','=':'equal',':':'semicolon'}
+        mapping={' ':'spc','\n':'ret','.':'dot','/':'slash','-':'minus','=':'equal',':':'semicolon','+':'equal','*':'8','_':'minus'}
         for ch in text:
-            shift=ch.isupper() or ch==':'
+            shift=ch.isupper() or ch in ':+*_'
             if shift:self.key('shift',True)
             self.tap(mapping.get(ch,ch.lower()))
             if shift:self.key('shift',False)

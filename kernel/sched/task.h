@@ -11,6 +11,7 @@ struct task {
     void *stack;
     void (*function)(void);
     char name[24];
+    char path[256];
     struct vfs_fd files[8];
 };
 void scheduler_init(void);

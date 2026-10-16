@@ -2,6 +2,9 @@
 #define GATHA_WINDOW_PROTOCOL_H
 #include <stdint.h>
 enum { SYS_WINDOW=18, SYS_DRAW, SYS_EVENT, SYS_WINDOW_CLOSE, SYS_LAUNCH, SYS_INFO, SYS_THEME, SYS_POWER };
+enum { SYS_PROCESSES=26, SYS_ARGUMENT, SYS_BITMAP };
+enum { APP_TERMINAL,APP_FILES,APP_EDITOR,APP_CALCULATOR,APP_SETTINGS,APP_SYSMON,APP_PAINT,APP_ABOUT,APP_WIDGETS };
+struct g_bitmap { int x,y,width,height,scale; const uint8_t *pixels; uint32_t palette[8]; };
 enum { G_MOUSE=1, G_KEY, G_RESIZE, G_CLOSE, G_FOCUS };
 enum { DRAW_RECT=1, DRAW_TEXT, DRAW_LINE };
 struct g_window { int width,height; char title[48]; };

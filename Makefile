@@ -28,9 +28,9 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage6-desktop$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage6-desktop-page.iso
-DISK ?= dist/gathaos-stage6-disk.img
+ISO ?= dist/gathaos-stage7-apps$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage7-apps-page.iso
+DISK ?= dist/gathaos-stage7-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -42,6 +42,8 @@ SOURCES += kernel/drivers/framebuffer.c kernel/drivers/ps2.c kernel/drivers/keyb
 SOURCES += kernel/sched/task.c kernel/sched/demo.c kernel/syscall/syscall.c libgatha/string.c
 SOURCES += kernel/drivers/ata.c kernel/drivers/rtc.c kernel/fs/gathafs.c kernel/fs/vfs.c kernel/fs/selftest.c
 OBJECTS := $(BUILD)/entry.o $(BUILD)/interrupts.o $(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
+APPS := terminal files editor calculator settings sysmon paint about
+OBJECTS += $(BUILD)/kernel/power.o $(addprefix $(BUILD)/,$(addsuffix -gex.o,$(APPS)))
 OBJECTS += $(BUILD)/demo-gex.o $(BUILD)/widgets-gex.o
 OBJECTS += $(BUILD)/gui/wm/wm.o $(BUILD)/gui/wm/launcher.o
 .PHONY: all iso run test test-boot clean
@@ -64,9 +66,68 @@ $(BUILD)/widgets.gex: $(BUILD)/widgets.elf tools/gex.py
 	$(PYTHON) tools/gex.py $< $(BUILD)/widgets.bin $@ widgets_gex
 $(BUILD)/widgets-gex.o: $(BUILD)/widgets.gex
 	$(CC) $(CFLAGS) -c $(BUILD)/widgets.c -o $@
+$(BUILD)/terminal.elf: $(BUILD)/user-start.o $(BUILD)/apps/terminal/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/terminal.gex: $(BUILD)/terminal.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/terminal.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/terminal.bin $@ terminal_gex
+$(BUILD)/terminal-gex.o: $(BUILD)/terminal.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/terminal.c -o $@
+$(BUILD)/files.elf: $(BUILD)/user-start.o $(BUILD)/apps/files/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/files.gex: $(BUILD)/files.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/files.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/files.bin $@ files_gex
+$(BUILD)/files-gex.o: $(BUILD)/files.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/files.c -o $@
+$(BUILD)/editor.elf: $(BUILD)/user-start.o $(BUILD)/apps/editor/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/editor.gex: $(BUILD)/editor.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/editor.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/editor.bin $@ editor_gex
+$(BUILD)/editor-gex.o: $(BUILD)/editor.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/editor.c -o $@
+$(BUILD)/calculator.elf: $(BUILD)/user-start.o $(BUILD)/apps/calculator/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/calculator.gex: $(BUILD)/calculator.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/calculator.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/calculator.bin $@ calculator_gex
+$(BUILD)/calculator-gex.o: $(BUILD)/calculator.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/calculator.c -o $@
+$(BUILD)/settings.elf: $(BUILD)/user-start.o $(BUILD)/apps/settings/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/settings.gex: $(BUILD)/settings.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/settings.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/settings.bin $@ settings_gex
+$(BUILD)/settings-gex.o: $(BUILD)/settings.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/settings.c -o $@
+$(BUILD)/sysmon.elf: $(BUILD)/user-start.o $(BUILD)/apps/sysmon/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/sysmon.gex: $(BUILD)/sysmon.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/sysmon.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/sysmon.bin $@ sysmon_gex
+$(BUILD)/sysmon-gex.o: $(BUILD)/sysmon.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/sysmon.c -o $@
+$(BUILD)/paint.elf: $(BUILD)/user-start.o $(BUILD)/apps/paint/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/paint.gex: $(BUILD)/paint.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/paint.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/paint.bin $@ paint_gex
+$(BUILD)/paint-gex.o: $(BUILD)/paint.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/paint.c -o $@
+$(BUILD)/about.elf: $(BUILD)/user-start.o $(BUILD)/apps/about/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/about.gex: $(BUILD)/about.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/about.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/about.bin $@ about_gex
+$(BUILD)/about-gex.o: $(BUILD)/about.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/about.c -o $@
 iso: $(ISO) $(DISK) dist/gathaos-disk.img
-$(DISK): tools/mkgathafs.py $(shell find rootfs -type f)
-	$(PYTHON) tools/mkgathafs.py rootfs "$@"
+$(DISK): tools/mkgathafs.py $(shell find rootfs -type f) $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS)))
+	mkdir -p $(BUILD)/rootfs/System/Apps
+	cp -a rootfs/. $(BUILD)/rootfs/
+	cp $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/rootfs/System/Apps/
+	$(PYTHON) tools/mkgathafs.py $(BUILD)/rootfs "$@"
 dist/gathaos-disk.img: $(DISK)
 	test -e "$@" || cp "$(DISK)" "$@"
 $(BUILD):
@@ -101,11 +162,12 @@ test: test-boot
 ifeq ($(DEBUG_FAULT),none)
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage6-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage7-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage6-desktop-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage6-desktop-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage6-desktop-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage7-apps-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage7-apps-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage7-apps-gp.iso test-boot
+	$(PYTHON) tools/power_test.py "$(ISO)" "$(DISK)"
 endif
 clean:
 	rm -rf build

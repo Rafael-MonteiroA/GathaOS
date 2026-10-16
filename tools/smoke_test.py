@@ -230,8 +230,8 @@ def main():
                     request("qmp_capabilities")
                     input_result = {}
                     if fault == "none":
-                        from desktop_test import exercise_desktop
-                        input_result = exercise_desktop(request, evidence, serial, width, height, scan_set)
+                        from apps_test import exercise_apps
+                        input_result = exercise_apps(request, evidence, serial, width, height, scan_set)
                         output = serial.read_text()
                     else:
                         screenshot = evidence / "screen.ppm"
@@ -265,6 +265,8 @@ def main():
                     if 'USERFS: all file syscalls PASS' not in output or 'STAGE5: DISK PASS' not in output:
                         raise RuntimeError('Missing filesystem syscall results')
                     persistence = verify_persistence(qemu,iso,disk,evidence,ram)
+                    from apps_test import verify_disk
+                    input_result['disk_verification']=verify_disk(disk)
                 result = {"result": "PASS", "mode": fault, "ram_mib": ram, "iso": str(iso),
                           "sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                           "resolution": [width, height], "pixels_checked": width * height,

@@ -7,4 +7,5 @@ void wm_run(void);
 int wm_call(struct interrupt_frame *frame);
 void wm_release(unsigned pid);
 int desktop_launch(unsigned app);
+int desktop_open(unsigned app,const char *path);
 #endif

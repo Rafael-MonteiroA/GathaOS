@@ -15,6 +15,7 @@
 #define WINDOWS 8
 struct window {
     unsigned id,owner,head,tail,minimized,maximized;
+    unsigned batching,batch_tick;
     int x,y,w,h,oldx,oldy,oldw,oldh;
     char title[48]; uint32_t *pixels;
     struct g_event events[64];
@@ -22,6 +23,7 @@ struct window {
 static struct window windows[WINDOWS];
 static int order[WINDOWS],count,focus=-1,drag=-1,dragx,dragy;
 static int width,height,mx,my,buttons,menu;
+extern const char *desktop_names[];
 static int dx,dy,dr,db,damaged;
 static unsigned next_id=1,frames,pixels_drawn,drops,accent=0x187e83,wallpaper;
 static void log_window(const char *what,const struct window *w) {
@@ -106,7 +108,17 @@ int wm_call(struct interrupt_frame *f) {
         struct g_window request=*(const struct g_window *)(uintptr_t)f->ebx; request.title[47]=0;
         return create_window(&request);
     }
-    if (f->eax==SYS_LAUNCH) return desktop_launch(f->ebx);
+    if (f->eax==SYS_LAUNCH) {
+        char path[256]={0};
+        if(f->ecx){unsigned i;for(i=0;i<256;++i){if(!user_range(f->ecx+i,1,0))return -14;path[i]=*(const char *)(uintptr_t)(f->ecx+i);if(!path[i])break;}if(i==256)return -36;}
+        return desktop_open(f->ebx,path);
+    }
+    if(f->eax==SYS_ARGUMENT){if(f->ecx<256 || !user_range(f->ebx,256,1))return -14;g_copy((char *)(uintptr_t)f->ebx,task_current()->path,256);return 0;}
+    if(f->eax==SYS_PROCESSES){
+        if(f->ecx>16 || !user_range(f->ebx,f->ecx*sizeof(struct g_process),1))return -14;
+        struct g_process *out=(void *)(uintptr_t)f->ebx;const struct task *tasks=task_table();unsigned n=0;
+        for(unsigned i=0;i<TASK_MAX && n<f->ecx;++i)if(tasks[i].state && tasks[i].state!=TASK_DEAD){out[n]=(struct g_process){.pid=tasks[i].pid,.state=tasks[i].state,.ticks=tasks[i].cpu_ticks};g_copy(out[n++].name,tasks[i].name,24);}return (int)n;
+    }
     if (f->eax==SYS_INFO) {
         if (!user_range(f->ebx,sizeof(struct g_info),1)) return -14;
         *(struct g_info *)(uintptr_t)f->ebx=(struct g_info){(unsigned)width,(unsigned)height,rtc_seconds(),pit_ticks(),pmm_free_frames(),pmm_total_frames(),heap_mapped_bytes(),(unsigned)count,frames,pixels_drawn,drops};
@@ -114,6 +126,15 @@ int wm_call(struct interrupt_frame *f) {
     }
     if (f->eax==SYS_THEME) { accent=f->ebx&0xffffff; wallpaper=f->ecx%3; damage(0,0,width,height); return 0; }
     struct window *w=owned(f->ebx); if (!w) return -9;
+    if(f->eax==SYS_BITMAP){
+        if(!user_range(f->ecx,sizeof(struct g_bitmap),0))return -14;
+        struct g_bitmap b=*(const struct g_bitmap *)(uintptr_t)f->ecx;
+        if(b.width<1||b.height<1||b.width>512||b.height>512||b.scale<1||b.scale>4||b.x< -2048||b.x>2048||b.y< -2048||b.y>2048)return -22;
+        if(!user_range((uint32_t)(uintptr_t)b.pixels,(unsigned)(b.width*b.height),0))return -14;
+        gfx_target(w->pixels,(unsigned)w->w,(unsigned)w->h);
+        for(int y=0;y<b.height;++y)for(int x=0;x<b.width;++x)gfx_rect(b.x+x*b.scale,b.y+y*b.scale,b.scale,b.scale,b.palette[b.pixels[y*b.width+x]&7]);
+        gfx_target(0,0,0);window_damage(w);return 0;
+    }
     if (f->eax==SYS_EVENT) {
         if (!user_range(f->ecx,sizeof(struct g_event),1)) return -14;
         if (w->head==w->tail) return 0;
@@ -127,6 +148,7 @@ int wm_call(struct interrupt_frame *f) {
         const struct g_draw *d=&commands[i];
         if (d->type<DRAW_RECT || d->type>DRAW_LINE || d->x< -2048 || d->x>2048 || d->y< -2048 || d->y>2048 || d->w< -2048 || d->w>2048 || d->h< -2048 || d->h>2048) return -22;
     }
+    if(f->esi&1){w->batching=1;w->batch_tick=pit_ticks();}
     gfx_target(w->pixels,(unsigned)w->w,(unsigned)w->h);
     for (unsigned i=0;i<f->edx;++i) {
         const struct g_draw *d=&commands[i];
@@ -134,17 +156,19 @@ int wm_call(struct interrupt_frame *f) {
         else if (d->type==DRAW_LINE) gfx_line(d->x,d->y,d->w,d->h,d->color);
         else { char text[64]; memcpy(text,d->text,64); text[63]=0; gfx_text(d->x,d->y,text,d->color,1); }
     }
+    if(f->esi&2)w->batching=0;
     gfx_target(0,0,0); if (!w->minimized) damage(w->x+2,w->y+32,w->w,w->h); return 0;
 }
 static void render(void) {
     if (!damaged) return;
+    for(int i=0;i<WINDOWS;++i)if(windows[i].batching){if(pit_ticks()-windows[i].batch_tick<50)return;windows[i].batching=0;}
     gfx_clip(dx,dy,dr-dx,db-dy);
     const unsigned tops[3]={0x17374d,0x302b4c,0x264637}, bottoms[3]={0x0c1c30,0x161c32,0x122c29};
     gfx_gradient(0,0,width,height,tops[wallpaper],bottoms[wallpaper]);
     gfx_text(width-330,height-180,"GathaOS",0x608a9a,3);
     gfx_text(width-328,height-120,"A small world of your own.",0x608a9a,1);
     gfx_round_rect(28,32,56,48,9,accent); gfx_text(44,48,"G",0xffffff,2);
-    gfx_text(24,90,"Widgets",0xe5f1f3,1);
+    gfx_text(28,90,"Files",0xe5f1f3,1);
     for (int z=0;z<count;++z) {
         int slot=order[z]; struct window *w=&windows[slot]; if (w->minimized) continue;
         gfx_rect(w->x+5,w->y+6,w->w+4,w->h+34,0x0b1828);
@@ -168,9 +192,9 @@ static void render(void) {
     unsigned seconds=rtc_seconds(),hour=seconds/3600%24; char clock[6]={(char)('0'+hour/10),(char)('0'+hour%10),':',(char)('0'+seconds/60%60/10),(char)('0'+seconds/60%10),0};
     gfx_text(width-64,height-28,clock,0xbfe2e9,1);
     if (menu) {
-        gfx_round_rect(8,height-166,244,116,8,0xf1f5f9);
-        gfx_text(24,height-150,"GathaOS / Applications",0x20344d,1);
-        gfx_rect(16,height-114,228,36,accent); gfx_text(28,height-104,"Widgets demo",0xffffff,1);
+        gfx_round_rect(8,height-390,244,340,8,0xf1f5f9);
+        gfx_text(24,height-374,"GathaOS / Applications",0x20344d,1);
+        for(int i=0;i<9;++i){gfx_rect(16,height-340+i*30,228,28,i&1?0xe3ecee:0xf1f5f9);gfx_text(28,height-334+i*30,desktop_names[i],0x20344d,1);}
     }
     for (int y=0;y<18;++y) for (int x=0;x<=y/2;++x) gfx_pixel(mx+x,my+y,x==0||x==y/2||y==17?0x102234:0xffffff);
     gfx_clip(0,0,width,height); framebuffer_present(dx,dy,dr-dx,db-dy);
@@ -198,13 +222,13 @@ static void handle(const struct input_event *e) {
     }
     if (pressed&1) {
         if (my>=height-42) {
-            if (mx<104) { menu=!menu; damage(0,height-180,260,180); }
+            if (mx<104) { menu=!menu; damage(0,height-400,260,400); }
             else { int i=(mx-110)/94; if (mx>=110 && i<count) raise_window(order[i]); }
             return;
         }
         if (menu) {
-            if (mx>=16 && mx<244 && my>=height-114 && my<height-78) (void)desktop_launch(0);
-            menu=0; damage(0,height-180,260,180); return;
+            if (mx>=16 && mx<244 && my>=height-340 && my<height-70) (void)desktop_launch((unsigned)(my-height+340)/30);
+            menu=0; damage(0,height-400,260,400); return;
         }
         for (int z=count-1;z>=0;--z) {
             int slot=order[z]; struct window *w=&windows[slot];
@@ -220,7 +244,7 @@ static void handle(const struct input_event *e) {
             }
             break;
         }
-        if (mx<104 && my<116) { (void)desktop_launch(0); return; }
+        if (mx<104 && my<116) { (void)desktop_launch(APP_FILES); return; }
     }
     if (focus>=0 && !windows[focus].minimized) {
         struct window *w=&windows[focus];
@@ -233,8 +257,8 @@ void wm_init(const struct boot_info *boot) {
     damage(0,0,width,height); render(); klog("WM: compositor buffers damage queue ready\r\n");
 }
 void wm_run(void) {
-    (void)desktop_launch(0); (void)desktop_launch(0);
-    klog("STAGE6: READY\r\n"); unsigned next=100,clock=0;
+    (void)desktop_launch(APP_ABOUT);
+    klog("STAGE7: READY\r\n"); unsigned next=100,clock=0;
     extern void tasks_demo_report(void);
     for (;;) {
         unsigned now=pit_ticks(); uint32_t flags=irq_save(); struct input_event e;
@@ -243,7 +267,7 @@ void wm_run(void) {
         render(); irq_restore(flags); task_reap();
         if (now-next<0x80000000u) {
             klog("PIT: ticks="); klog_u32(now); klog("\r\n"); tasks_demo_report();
-            if (next==300) klog("STAGE3: PASS\r\nSTAGE6: PASS\r\n"); next+=100;
+            if (next==300) klog("STAGE3: PASS\r\nSTAGE7: PASS\r\n"); next+=100;
         }
         __asm__ volatile("sti; hlt" : : : "memory");
     }

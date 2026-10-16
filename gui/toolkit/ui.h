@@ -11,6 +11,7 @@ int ui_open(struct ui *u,const char *title,int width,int height);
 int ui_poll(struct ui *u);
 void ui_begin(struct ui *u);
 void ui_end(struct ui *u);
+void ui_bitmap(struct ui *u,const struct g_bitmap *bitmap);
 void ui_rect(struct ui *u,int x,int y,int w,int h,unsigned color);
 void ui_line(struct ui *u,int x,int y,int x2,int y2,unsigned color);
 void ui_label(struct ui *u,int x,int y,const char *text,unsigned color);

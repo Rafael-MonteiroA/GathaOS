@@ -1,9 +1,9 @@
 # GathaOS
 
 GathaOS is an original, freestanding x86 operating system written in NASM and C.
-**Stage 6 — Desktop** adds a window manager, compositor, toolkit and two separate
-user-mode widget demos. Drag, stack, minimize, maximize, restore and close windows;
-launch more from Start or the desktop icon. GathaFS provides persistent IDE
+**Stage 7 — Applications** adds Terminal, Files, Text Editor, Calculator, Settings,
+System Monitor, Paint and About as separate user-mode GEX programs. Drag, stack,
+minimize, maximize, restore and close windows; launch from Start. GathaFS provides persistent IDE
 storage, an original disk format, a host image builder and file syscalls.
 The graphics/input layer provides double buffering, an original bitmap font,
 PS/2 keyboard and mouse. Its own BIOS loader boots a higher-half kernel with paging, physical
@@ -27,12 +27,12 @@ builds run in a native temporary checkout, with verified copies returned here.
 
 `make clean` removes `build/` and preserves previous ISOs. Existing release files
 are immutable: an identical rebuild verifies them; different bytes require a
-fresh filename, such as `ISO=dist/gathaos-stage6-desktop-fix1.iso`.
+fresh filename, such as `ISO=dist/gathaos-stage7-apps-fix1.iso`.
 
 ## Run and use
 
 ```sh
-qemu-system-i386 -cdrom dist/gathaos-stage6-desktop.iso -drive file=dist/gathaos-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -serial stdio -no-reboot
+qemu-system-i386 -cdrom dist/gathaos-stage7-apps.iso -drive file=dist/gathaos-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -serial stdio
 ```
 
 This works in PowerShell with QEMU on PATH, or Ubuntu with a display. WSL graphical
@@ -44,7 +44,8 @@ Click a field and type with a **US keyboard layout**. Text fields support arrows
 Home/End, Backspace/Delete, Shift selection and Ctrl+A. Try the check box, list,
 scrollbar, Help menu and right-click context menu. Title controls are minimize,
 maximize/restore and close; taskbar buttons bring windows back. The RTC clock is
-UTC. An interactive file manager/editor will arrive in the application stage.
+UTC. Start opens the applications; the desktop icon opens Files. Read
+`docs/applications.md` for controls, shell commands and format/size limits.
 The user has authorized sequential completion of the remaining stages.
 
 VirtualBox / VMware: Other 32-bit OS, legacy BIOS, EFI disabled, 256 MiB RAM,
@@ -55,7 +56,7 @@ hypervisors remain untested; QEMU standard VGA is the verified target.
 
 ## Tests
 
-`make test` performs twelve actual ISO boots and host filesystem tests:
+`make test` performs the normal/fault/persistence matrix and host filesystem tests:
 
 1. Normal set-2 keyboard kernel with 256, 64 and 512 MiB RAM.
 2. Native set-1 keyboard kernel with 256 MiB RAM.
@@ -63,11 +64,15 @@ hypervisors remain untested; QEMU standard VGA is the verified target.
    protection with 256 MiB RAM, behind separate `DEBUG_FAULT` options.
 4. A second fresh QEMU process for each normal configuration, using the written
    test disk to verify persistence. The host independently parses its data/bitmap.
+5. Shutdown (clean halt) and reboot command tests, including a second guest boot
+   after the actual reset. These add three boots, for fifteen in total.
 
 Every boot checks memory stress, frame accounting and timer/IRQ behavior.
 Normal boots verify scheduler, file persistence and driver self-tests, then send
-real emulated PS/2 events through QMP. Desktop tests verify text pixels, widget
-events, dragging, focus, title controls, Start/icon launches and cursor restoration.
+real emulated PS/2 events through QMP. Application tests verify each launch and
+exit, saved text pixels, decimal math, file operations/associations, shell commands,
+themes, task reporting and saved bitmap bytes. Stage 6 evidence retains the
+window-management and toolkit-specific checks.
 Earlier stage evidence preserves the detailed input-lab regression tests. Fault boots
 check register diagnostics and complete panic images. Evidence lives under
 `build/test-<mode>-<RAM>-set<1|2>/` with serial, QMP registers, PNG/PPM and JSON.
@@ -100,5 +105,6 @@ Read `docs/stage-4-report.md`, `docs/gex.md`, `docs/syscalls.md`,
 cursor permissions are in `docs/graphics-font-license.txt`; the panic font's
 permission is in `docs/panic-font-license.txt`. Previous reports and ISOs remain.
 Read `docs/stage-5-report.md` and `docs/gathafs.md` for the storage format, disk
-usage and persistence evidence. See `docs/gui.md` for the GUI ABI. Stage 7 will add
-the terminal, file manager, editor, calculator, settings, monitor and paint apps.
+usage and persistence evidence. See `docs/gui.md` and `docs/applications.md` for
+the GUI and application ABI. Stage 8 adds release polish, power-off support,
+long-run stability, leak checks and redraw-performance measurements.
