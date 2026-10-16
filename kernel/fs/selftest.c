@@ -14,7 +14,8 @@ void fs_self_test(void) {
         klog("FSTEST: persisted data verified after restart PASS\r\n");
     } else {
         int created = fs_create("/persist.bin",G_FILE);
-        if (created < 0 || fs_write((unsigned)created,0,bytes,sizeof(bytes)) != sizeof(bytes)) panic("FS PERSISTENCE WRITE FAILED",0);
+        int written=created<0?created:fs_write((unsigned)created,0,bytes,sizeof(bytes));
+        if (written != sizeof(bytes)) { klog("FSTEST: create="); klog_hex((uint32_t)created); klog(" write="); klog_hex((uint32_t)written); klog("\r\n"); panic("FS PERSISTENCE WRITE FAILED",0); }
         klog("FSTEST: persistent data written and flushed PASS\r\n");
     }
     unsigned baseline = fs_free_blocks();

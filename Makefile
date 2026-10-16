@@ -28,9 +28,9 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage5-storage$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage5-storage-page.iso
-DISK ?= dist/gathaos-stage5-disk.img
+ISO ?= dist/gathaos-stage6-desktop$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage6-desktop-page.iso
+DISK ?= dist/gathaos-stage6-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -42,7 +42,8 @@ SOURCES += kernel/drivers/framebuffer.c kernel/drivers/ps2.c kernel/drivers/keyb
 SOURCES += kernel/sched/task.c kernel/sched/demo.c kernel/syscall/syscall.c libgatha/string.c
 SOURCES += kernel/drivers/ata.c kernel/drivers/rtc.c kernel/fs/gathafs.c kernel/fs/vfs.c kernel/fs/selftest.c
 OBJECTS := $(BUILD)/entry.o $(BUILD)/interrupts.o $(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
-OBJECTS += $(BUILD)/demo-gex.o
+OBJECTS += $(BUILD)/demo-gex.o $(BUILD)/widgets-gex.o
+OBJECTS += $(BUILD)/gui/wm/wm.o $(BUILD)/gui/wm/launcher.o
 .PHONY: all iso run test test-boot clean
 all: iso
 $(BUILD)/user-start.o: libgatha/start.asm | $(BUILD)
@@ -56,6 +57,13 @@ $(BUILD)/demo.gex: $(BUILD)/demo.elf tools/gex.py
 	$(PYTHON) tools/gex.py $< $(BUILD)/demo.bin $@ demo_gex
 $(BUILD)/demo-gex.o: $(BUILD)/demo.gex
 	$(CC) $(CFLAGS) -c $(BUILD)/demo.c -o $@
+$(BUILD)/widgets.elf: $(BUILD)/user-start.o $(BUILD)/apps/widgets/main.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/widgets.gex: $(BUILD)/widgets.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/widgets.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/widgets.bin $@ widgets_gex
+$(BUILD)/widgets-gex.o: $(BUILD)/widgets.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/widgets.c -o $@
 iso: $(ISO) $(DISK) dist/gathaos-disk.img
 $(DISK): tools/mkgathafs.py $(shell find rootfs -type f)
 	$(PYTHON) tools/mkgathafs.py rootfs "$@"
@@ -93,11 +101,11 @@ test: test-boot
 ifeq ($(DEBUG_FAULT),none)
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage5-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage6-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage5-storage-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage5-storage-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage5-storage-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage6-desktop-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage6-desktop-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage6-desktop-gp.iso test-boot
 endif
 clean:
 	rm -rf build

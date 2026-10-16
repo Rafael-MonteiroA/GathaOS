@@ -4,15 +4,15 @@
 static uint32_t sectors;
 static void delay(void) { for (unsigned i = 0; i < 4; ++i) (void)inb(0x3f6); }
 static int wait_ready(int data) {
-    for (unsigned i = 0; i < 1000000; ++i) {
+    for (unsigned i = 0; i < 10000000; ++i) {
         uint8_t s = inb(0x1f7);
         if (!s || s == 255) return 0;
         if (!(s & 0x80)) {
-            if (s & 0x21) return 0;
+            if (s & 0x21) { klog("ATA: error status="); klog_hex(s); klog(" error="); klog_hex(inb(0x1f1)); klog("\r\n"); return 0; }
             if (!data || (s & 8)) return 1;
         }
     }
-    return 0;
+    klog("ATA: polling timeout\r\n"); return 0;
 }
 int ata_init(void) {
     outb(0x3f6,2); /* Polling, no IDE IRQ. */

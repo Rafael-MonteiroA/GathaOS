@@ -1,4 +1,6 @@
 #include "syscall.h"
+#include "../gui/wm/wm.h"
+#include "../gui/wm/protocol.h"
 #include "sched/task.h"
 #include "mm/memory.h"
 #include "arch/x86/pit.h"
@@ -54,6 +56,7 @@ static int file_call(struct interrupt_frame *f) {
 struct interrupt_frame *syscall_dispatch(struct interrupt_frame *f) {
     struct task *t = task_current();
     if (f->eax >= SYS_OPEN && f->eax <= SYS_SYNC) { f->eax = (uint32_t)file_call(f); return f; }
+    if (f->eax >= SYS_WINDOW && f->eax <= SYS_THEME) { f->eax=(uint32_t)wm_call(f); return f; }
     switch (f->eax) {
     case SYS_TICKS: f->eax = pit_ticks(); break;
     case SYS_PID: f->eax = t->pid; break;

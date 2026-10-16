@@ -9,6 +9,7 @@
 #include "../libgatha/memory.h"
 #include "drivers/input.h"
 #include "graphics_demo.h"
+#include "../gui/wm/wm.h"
 #include "sched/task.h"
 static struct boot_info boot_state;
 #if DEBUG_FAULT != 0
@@ -80,7 +81,7 @@ void kernel_main(const struct boot_info *b) {
 #if DEBUG_FAULT == 0
     if (fs_mount()) panic("GATHAFS MOUNT FAILED - ATTACH IDE DISK",0);
     fs_self_test();
-    graphics_demo_init(b);
+    wm_init(b);
 #endif
     pic_init();
     pit_init();
@@ -91,7 +92,7 @@ void kernel_main(const struct boot_info *b) {
 #if DEBUG_FAULT == 0
     ps2_init(b->width, b->height);
     tasks_demo_init();
-    graphics_demo_run();
+    wm_run();
 #endif
     uint32_t next_report = 100;
     for (;;) {

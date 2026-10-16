@@ -30,6 +30,7 @@ static inline int g_unlink(const char *p) { return g_call(SYS_UNLINK,(uint32_t)(
 static inline int g_rename(const char *a, const char *b) { return g_call(SYS_RENAME,(uint32_t)(uintptr_t)a,(uint32_t)(uintptr_t)b,0,0,0); }
 static inline int g_sync(void) { return g_call(SYS_SYNC,0,0,0,0,0); }
 size_t g_strlen(const char *s);
+static inline int g_puts(const char *s) { return g_log(s,(unsigned)g_strlen(s)); }
 int g_strcmp(const char *a, const char *b);
 void g_copy(char *to, const char *from, unsigned capacity);
 char *g_decimal(char *to, int value);

@@ -230,7 +230,8 @@ def main():
                     request("qmp_capabilities")
                     input_result = {}
                     if fault == "none":
-                        input_result = exercise(request, evidence, serial, width, height, scan_set, animated=True)
+                        from desktop_test import exercise_desktop
+                        input_result = exercise_desktop(request, evidence, serial, width, height, scan_set)
                         output = serial.read_text()
                     else:
                         screenshot = evidence / "screen.ppm"

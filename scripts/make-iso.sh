@@ -7,7 +7,7 @@ mkdir -p "$build/iso/boot" "$(dirname "$output")"
 cp "$image" "$build/iso/boot/gatha.img"
 # Fixed metadata and volume dates make clean builds byte-for-byte reproducible.
 touch -t 202601010000.00 "$build/iso/boot/gatha.img" "$build/iso/boot" "$build/iso"
-xorriso -as mkisofs -quiet -V GATHAOS_STAGE5 \
+xorriso -as mkisofs -quiet -V GATHAOS_STAGE6 \
     --modification-date=2026010100000000 \
     --set_all_file_dates 2026010100000000 \
     -b boot/gatha.img -c boot/boot.cat -o "$build/gathaos.iso" "$build/iso"

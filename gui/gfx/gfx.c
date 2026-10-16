@@ -3,9 +3,17 @@
 #include "drivers/framebuffer.h"
 #include "drivers/serial.h"
 #include "panic.h"
+static uint32_t *target;
+static unsigned tw,th;
+static int left,top,right=32767,bottom=32767;
+static unsigned surface_width(void) { return target?tw:framebuffer_width(); }
+static unsigned surface_height(void) { return target?th:framebuffer_height(); }
+static uint32_t *surface_buffer(void) { return target?target:framebuffer_buffer(); }
+void gfx_clip(int x,int y,int w,int h) { left=x; top=y; right=x+w; bottom=y+h; }
+void gfx_target(uint32_t *p,unsigned w,unsigned h) { target=p; tw=w; th=h; gfx_clip(0,0,(int)surface_width(),(int)surface_height()); }
 void gfx_pixel(int x, int y, uint32_t rgb) {
-    if ((unsigned)x < framebuffer_width() && (unsigned)y < framebuffer_height())
-        framebuffer_buffer()[(unsigned)y * framebuffer_width() + (unsigned)x] = rgb & 0xffffff;
+    if (x>=left && y>=top && x<right && y<bottom && (unsigned)x < surface_width() && (unsigned)y < surface_height())
+        surface_buffer()[(unsigned)y * surface_width() + (unsigned)x] = rgb & 0xffffff;
 }
 uint32_t gfx_blend(uint32_t bg, uint32_t fg, unsigned alpha) {
     if (alpha > 255) alpha = 255;
@@ -28,13 +36,17 @@ void gfx_line(int x0, int y0, int x1, int y1, uint32_t rgb) {
     }
 }
 void gfx_rect(int x, int y, int w, int h, uint32_t rgb) {
-    int right = x + w, bottom = y + h;
+    int edge = x + w, end = y + h;
+    if (edge>right) edge=right;
+    if (end>bottom) end=bottom;
+    if (x<left) x=left;
+    if (y<top) y=top;
     if (x < 0) x = 0;
     if (y < 0) y = 0;
-    if (right > (int)framebuffer_width()) right = (int)framebuffer_width();
-    if (bottom > (int)framebuffer_height()) bottom = (int)framebuffer_height();
-    for (int py = y; py < bottom; ++py)
-        for (int px = x; px < right; ++px) gfx_pixel(px, py, rgb);
+    if (edge > (int)surface_width()) edge = (int)surface_width();
+    if (end > (int)surface_height()) end = (int)surface_height();
+    for (int py = y; py < end; ++py)
+        for (int px = x; px < edge; ++px) surface_buffer()[(unsigned)py*surface_width()+(unsigned)px]=rgb&0xffffff;
 }
 void gfx_round_rect(int x, int y, int w, int h, int radius, uint32_t rgb) {
     if (w <= 0 || h <= 0) return;
@@ -57,8 +69,8 @@ void gfx_alpha_rect(int x, int y, int w, int h, uint32_t rgb, unsigned alpha) {
     for (int row = 0; row < h; ++row)
         for (int col = 0; col < w; ++col) {
             int px = x + col, py = y + row;
-            if ((unsigned)px < framebuffer_width() && (unsigned)py < framebuffer_height()) {
-                uint32_t bg = framebuffer_buffer()[(unsigned)py * framebuffer_width() + (unsigned)px];
+            if ((unsigned)px < surface_width() && (unsigned)py < surface_height()) {
+                uint32_t bg = surface_buffer()[(unsigned)py * surface_width() + (unsigned)px];
                 gfx_pixel(px, py, gfx_blend(bg, rgb, alpha));
             }
         }

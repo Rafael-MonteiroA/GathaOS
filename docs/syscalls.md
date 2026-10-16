@@ -35,6 +35,7 @@ absolute, NUL-terminated and limited to 255 bytes. Seek cannot create holes.
 limit, -28 capacity, -36 name/path too long, -39 non-empty and -74 bad volume.
 
 Unknown calls return -38. Invalid lengths/delays return -22 where applicable.
+GUI calls 18 through 24 and their shared structures are specified in `gui.md`.
 User ranges must lie wholly in 0x00400000..0x007fffff, with user-present PTEs
 and writable PTEs for output. Zero-length transfers do not dereference pointers.
 High kernel mappings are supervisor-only in every address space.

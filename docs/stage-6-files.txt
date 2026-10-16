@@ -1,0 +1,229 @@
+gathaos/
+|-- Makefile
+|-- README.md
+|-- apps/
+|   `-- widgets/
+|       `-- main.c
+|-- dist/
+|   |-- gathaos-stage6-desktop.iso
+|   |-- gathaos-stage6-disk.img
+|   |-- stage6-SHA256SUMS.txt
+|   |-- stage6-build-verification.log
+|   `-- stage6-evidence/
+|       |-- el-torito.txt
+|       |-- test-div0-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-gp-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-none-256-set1/
+|       |   |-- context-dialog.png
+|       |   |-- context-dialog.ppm
+|       |   |-- context-menu.png
+|       |   |-- context-menu.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- desktop.png
+|       |   |-- desktop.ppm
+|       |   |-- dialog.png
+|       |   |-- dialog.ppm
+|       |   |-- disk.img
+|       |   |-- dragged.png
+|       |   |-- dragged.ppm
+|       |   |-- empty-desktop.png
+|       |   |-- empty-desktop.ppm
+|       |   |-- focused-window.png
+|       |   |-- focused-window.ppm
+|       |   |-- maximized.png
+|       |   |-- maximized.ppm
+|       |   |-- minimized.png
+|       |   |-- minimized.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- restored.png
+|       |   |-- restored.ppm
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- start-menu.png
+|       |   |-- start-menu.ppm
+|       |   |-- typed-field.png
+|       |   `-- typed-field.ppm
+|       |-- test-none-256-set2/
+|       |   |-- context-dialog.png
+|       |   |-- context-dialog.ppm
+|       |   |-- context-menu.png
+|       |   |-- context-menu.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- desktop.png
+|       |   |-- desktop.ppm
+|       |   |-- dialog.png
+|       |   |-- dialog.ppm
+|       |   |-- disk.img
+|       |   |-- dragged.png
+|       |   |-- dragged.ppm
+|       |   |-- elf.txt
+|       |   |-- empty-desktop.png
+|       |   |-- empty-desktop.ppm
+|       |   |-- focused-window.png
+|       |   |-- focused-window.ppm
+|       |   |-- kernel.map
+|       |   |-- maximized.png
+|       |   |-- maximized.ppm
+|       |   |-- minimized.png
+|       |   |-- minimized.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- restored.png
+|       |   |-- restored.ppm
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- start-menu.png
+|       |   |-- start-menu.ppm
+|       |   |-- typed-field.png
+|       |   |-- typed-field.ppm
+|       |   `-- undefined-symbols.txt
+|       |-- test-none-512-set2/
+|       |   |-- context-dialog.png
+|       |   |-- context-dialog.ppm
+|       |   |-- context-menu.png
+|       |   |-- context-menu.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- desktop.png
+|       |   |-- desktop.ppm
+|       |   |-- dialog.png
+|       |   |-- dialog.ppm
+|       |   |-- disk.img
+|       |   |-- dragged.png
+|       |   |-- dragged.ppm
+|       |   |-- empty-desktop.png
+|       |   |-- empty-desktop.ppm
+|       |   |-- focused-window.png
+|       |   |-- focused-window.ppm
+|       |   |-- maximized.png
+|       |   |-- maximized.ppm
+|       |   |-- minimized.png
+|       |   |-- minimized.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- restored.png
+|       |   |-- restored.ppm
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- start-menu.png
+|       |   |-- start-menu.ppm
+|       |   |-- typed-field.png
+|       |   `-- typed-field.ppm
+|       |-- test-none-64-set2/
+|       |   |-- context-dialog.png
+|       |   |-- context-dialog.ppm
+|       |   |-- context-menu.png
+|       |   |-- context-menu.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- cursor-restored.png
+|       |   |-- cursor-restored.ppm
+|       |   |-- desktop.png
+|       |   |-- desktop.ppm
+|       |   |-- dialog.png
+|       |   |-- dialog.ppm
+|       |   |-- disk.img
+|       |   |-- dragged.png
+|       |   |-- dragged.ppm
+|       |   |-- empty-desktop.png
+|       |   |-- empty-desktop.ppm
+|       |   |-- focused-window.png
+|       |   |-- focused-window.ppm
+|       |   |-- maximized.png
+|       |   |-- maximized.ppm
+|       |   |-- minimized.png
+|       |   |-- minimized.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- restored.png
+|       |   |-- restored.ppm
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- start-menu.png
+|       |   |-- start-menu.ppm
+|       |   |-- typed-field.png
+|       |   `-- typed-field.ppm
+|       |-- test-page-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       `-- test-readonly-256-set2/
+|           |-- cpu-registers.txt
+|           |-- elf.txt
+|           |-- kernel.map
+|           |-- qemu.log
+|           |-- result.json
+|           |-- screen.png
+|           |-- screen.ppm
+|           |-- serial.log
+|           `-- undefined-symbols.txt
+|-- docs/
+|   |-- gui.md
+|   |-- stage-6-files.txt
+|   |-- stage-6-report.md
+|   `-- syscalls.md
+|-- gui/
+|   |-- gfx/
+|   |   |-- gfx.c
+|   |   `-- gfx.h
+|   |-- toolkit/
+|   |   |-- ui.c
+|   |   `-- ui.h
+|   `-- wm/
+|       |-- launcher.c
+|       |-- protocol.h
+|       |-- wm.c
+|       `-- wm.h
+|-- kernel/
+|   |-- drivers/
+|   |   `-- ata.c
+|   |-- fs/
+|   |   `-- selftest.c
+|   |-- main.c
+|   |-- sched/
+|   |   `-- task.c
+|   `-- syscall/
+|       `-- syscall.c
+|-- libgatha/
+|   |-- api.h
+|   |-- memory.c
+|   `-- memory.h
+|-- scripts/
+|   |-- make-iso.sh
+|   `-- run-qemu.sh
+`-- tools/
+    |-- desktop_test.py
+    `-- smoke_test.py
