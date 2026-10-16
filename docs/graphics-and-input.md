@@ -1,4 +1,4 @@
-# Graphics and input contract — Stage 3
+# Graphics and input contract - GathaOS 1.0 RC1
 
 ## Framebuffer and drawing
 
@@ -17,10 +17,11 @@ coordinates/dimensions are limited to +/-32767 by the internal API contract.
 Text supports 95 printable ASCII characters, newline and scales 1..4. See
 `graphics-font-license.txt` for the original font/cursor permission grant.
 
-The demo presents changed text/status areas and old/new cursor rectangles at
-at most 50 Hz. The 16x24 cursor saves/restores pixels in the back buffer, including
-when overlapping text or screen edges. IRQs never render or allocate. This is a
-kernel driver demo without a window manager, widgets or application processes.
+The historical Stage 3 driver demo retains its original input laboratory.
+The release desktop instead uses the compositor described in gui.md: damaged
+rectangles, per-window buffers, transactional client drawing and an 18-pixel
+cursor restored through composition. Hardware input IRQs only enqueue bytes.
+The UI and font design are documented in visual-design.md.
 
 ## PS/2 and events
 

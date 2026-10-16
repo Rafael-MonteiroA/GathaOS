@@ -2,9 +2,9 @@
 #define GATHA_UI_H
 #include "../../libgatha/api.h"
 #include "../wm/protocol.h"
-#define UI_BG 0xf1f5f9
+#define UI_BG 0xf3f4f6
 #define UI_INK 0x20344d
-#define UI_ACCENT 0x187e83
+#define UI_ACCENT 0x426d9c
 struct ui { int window,width,height,count,previous; struct g_event e; struct g_draw commands[256]; };
 struct ui_text { char *data; unsigned capacity,cursor,anchor,scroll; int focused,multiline; };
 int ui_open(struct ui *u,const char *title,int width,int height);

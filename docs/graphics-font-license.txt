@@ -5,8 +5,8 @@ Permission is granted to anyone to use, copy, modify, distribute and sublicense
 this artwork for any purpose, including commercial use, without restriction.
 The artwork is provided without warranty of any kind.
 
-The 95 printable ASCII cells use original 5x7 drawings centered horizontally
-and expanded vertically into 8x16 bitmap cells. Uppercase and digits extend
+The 95 printable ASCII cells use original 5x7 drawings adapted to a six-pixel
+body and nine-pixel cap height inside fixed 8x16 bitmap cells in Stage 8. Uppercase and digits extend
 the project's original panic font. Lowercase and punctuation were drawn for
 Stage 3. tools/make_font.py records every drawing; gui/gfx/font.h is generated
 and checked in. No third-party font or cursor data was imported.

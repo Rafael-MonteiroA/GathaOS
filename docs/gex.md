@@ -26,8 +26,9 @@ Each process has private pages at the same virtual addresses, with a 64 KiB user
 stack at 0x007f0000..0x007fffff and unmapped space below the stack. The entry gets
 an application argument in EAX. `libgatha/start.asm` invokes `app_main(argument)`
 and turns its return value into `exit`. Applications use original freestanding
-memory/string routines and inline syscall wrappers. Stage 4 embeds its demo GEX
-in the kernel; later stages can load the same format from GathaFS.
+memory/string routines and inline syscall wrappers. Release applications are
+embedded in the kernel and also ship as GEX files on the seed GathaFS disk.
+Files launches those disk executables through SYS_LAUNCH index 99.
 
 The BIOS raw-kernel staging area was expanded to 0x10000..0x7ffff (448 KiB).
 The existing sector loop advances ES by 0x20 per 512-byte sector; it already

@@ -36,10 +36,10 @@ are EBX, ECX, EDX in order; result is signed EAX. Calls use int 0x80.
 | Number | Operation | Arguments |
 |---|---|---|
 | 18 | Create window | pointer to g_window (dimensions, bounded title) |
-| 19 | Draw | owned handle, g_draw array, count <= 256 |
+| 19 | Draw | owned handle, g_draw array, count <= 256; ESI begin=1/end=2 |
 | 20 | Poll event | owned handle, writable g_event; returns 1 or 0 |
 | 21 | Close window | owned handle |
-| 22 | Launch registered application | application index |
+| 22 | Launch application | application index, optional document path; 99 loads GEX |
 | 23 | System/desktop information | writable g_info |
 | 24 | Theme | RGB accent, wallpaper index |
 
@@ -50,3 +50,8 @@ pressed bits 0..2, released bits 8..10. Keyboard events include pressed state,
 ASCII, the driver's key ID and modifier flags. Resize events carry new client
 dimensions. Window close is a request; well-behaved toolkit apps exit after
 releasing the handle. The system does not yet forcibly kill unresponsive apps.
+
+The Stage 8 visual design is specified in visual-design.md. SYS_INFO exposes
+window, frame, presented-pixel and event-drop counters. Serial HEALTH samples
+add free physical frames and mapped heap for the ten-minute soak. Wallpaper
+ribbons are limited to damaged scanlines; idle updates repaint only the clock.

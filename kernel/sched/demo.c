@@ -11,7 +11,8 @@ extern const unsigned demo_gex_size;
 static volatile uint32_t frames[2], dirty, worker_ticks;
 static void worker(void) {
     klog("THREAD: kernel worker running\r\n");
-    for (;;) { ++worker_ticks; g_sleep(5); }
+    while(pit_ticks()<600) { ++worker_ticks; g_sleep(5); }
+    g_exit(0);
 }
 void tasks_demo_init(void) {
     scheduler_init();

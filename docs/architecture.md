@@ -1,44 +1,67 @@
-# Boot architecture through Stage 2
+# Architecture — GathaOS 1.0 RC1
 
-The build runs on a host OS; the guest uses only original NASM and C code.
-Firmware services are used in real mode and never after the protected-mode jump.
-There are no third-party runtime sources, host libc or dynamic libraries.
-Stage 1 adds an original hand-authored font for panic diagnostics only.
+The host toolchain produces an original NASM/C guest with no imported OS runtime.
 
-1. Legacy BIOS boots the ISO through its El Torito floppy-emulation catalog.
-2. The BIOS exposes `boot/gatha.img` as a 1.44 MiB floppy with 18 sectors/track,
-   2 heads and 80 cylinders. DL identifies that BIOS device.
-3. The first 512-byte stage reads 16 sectors starting at logical sector 1 into
-   physical 0x8000. Each read uses INT 13h CHS, with three attempts and resets.
-4. The second-stage loader reads the kernel from sector 17 into 0x10000. It gathers E820 entries,
-   enables and verifies A20, selects a direct-color VBE linear framebuffer, and
-   fills the versioned boot information structure.
-5. A minimal flat GDT enables protected mode. The loader copies the raw kernel to
-   0x100000 and jumps there with EBX pointing to the boot information.
-6. Stage 2's low assembly entry sets up temporary identity/high mappings and
-   enables paging. It jumps to high text, clears BSS, moves the stack high and
-   calls C with a 16-byte-aligned call stack.
-7. The kernel installs high GDT/IDT pointers, initializes the physical allocator
-   from E820, installs final mappings and removes the low identity window. It
-   maps the framebuffer, draws the static pattern, initializes the heap and
-   runs allocation/rollback/content stress tests. See `memory.md`.
-8. The kernel remaps the PIC, starts the PIT, verifies register preservation
-   across an IRQ and idles between timer interrupts. Debug builds raise an
-   exception after 200 ticks. See `interrupts.md`.
+## Boot path
 
-The floppy is embedded in the ISO, not a separately required VM disk. It contains
-raw fixed-layout boot code, not a filesystem. There is no ISO9660 parser yet.
-The packed kernel is limited to 64 KiB; this deliberate Stage 0 limit is checked
-by the build. The 8 KiB second-stage limit is checked by NASM padding.
+1. BIOS selects the ISO's El Torito 1.44 MiB floppy-emulation entry. The original
+   512-byte stage loads the 8 KiB second stage with retrying INT 13h CHS reads.
+2. Stage two loads the raw kernel from sector 17 into physical 0x10000..0x7ffff
+   (448 KiB limit), verifies A20, collects up to 64 E820 records, selects VBE
+   1024x768x32 (800x600 fallback), and builds the versioned boot information.
+3. Protected mode copies the payload to 1 MiB. The bootstrap maps the first
+   4 MiB low/high, enables paging and CR0.WP, jumps high, clears BSS and calls C.
+4. GDT/IDT, PMM and final paging replace the bootstrap environment. Low identity
+   mappings are removed, text is read-only, kernel mappings supervisor-only.
+5. Heap and memory self-tests run. The framebuffer back buffer is allocated;
+   the startup splash is presented. GathaFS mounts the ATA primary-master disk
+   and verifies storage. Graphics/input self-tests prepare the compositor.
+6. PIC/PIT and PS/2 initialize. The scheduler launches isolation probes and two
+   diagnostic user animations plus a kernel worker, which exit after six seconds.
+   About opens on the desktop. Serial retains boot, fault and health telemetry.
 
-Graphics are written directly once to the hardware framebuffer; double buffering
-and reusable graphics primitives belong to Stage 3. A20 is tried via firmware
-and port 0x92, then tested using an address alias check. Missing E820, overflow
-of its 64-entry buffer, missing VBE or a failed A20 check stops boot with a serial
-error. First-stage loader read errors appear through BIOS text output.
+The boot floppy is raw fixed-layout code, not GathaFS. User data lives on the
+separate IDE disk. There is no ISO9660 reader. BIOS services end at the protected
+mode jump; subsequent I/O uses original port/MMIO drivers.
 
-The smoke test runs QEMU with software emulation (TCG), no virtual hard disk and
-no network device. Serial success alone does not satisfy it: the displayed pixels
-must also match, timer counts must continue, and debug builds must report the
-expected exception frame. Guest success does not automatically exit the VM;
-the test host captures the display and then asks QEMU to quit.
+## Execution and memory
+
+A single CPU runs a two-tick, 100 Hz preemptive round-robin scheduler, up to
+sixteen tasks. Ring-3 GEX programs have private executable/data/stack pages and
+separate page directories. Kernel mappings are shared and protected. A TSS
+selects each task's 16 KiB kernel stack. User faults terminate the task; kernel
+faults produce a diagnostic panic screen. Dead tasks are reaped on another stack.
+
+The PMM manages usable E820 pages below 512 MiB. The heap grows from 64 KiB to
+at most 16 MiB, splitting/coalescing allocations and returning trailing pages.
+Interrupt-gate syscalls validate all user pointers and execute with IRQs disabled.
+This is a small uniprocessor design, without SMP or floating-point context.
+
+## Desktop and applications
+
+The kernel compositor owns screen and window buffers, damage tracking, stacking,
+focus, title controls and bounded event queues. It redraws the union of damaged
+rectangles and presents only that region. Pointer movement restores its old
+pixels through ordinary composition. Draw transactions prevent partial toolkit
+frames from being presented. The compositor periodically reports allocations,
+window count, frames, presented pixels and dropped events for host verification.
+
+User-mode toolkit code builds bounded drawing-command batches. Each application
+is a separate GEX process. Built-in launch images are embedded in the kernel;
+matching copies ship in /System/Apps on a fresh seed. Files can load GEX from
+GathaFS, pass document paths, or select Editor/Paint by extension. Closing a
+window/process releases its pixel buffers, kernel stack, address space and FDs.
+
+ATA uses polling PIO; GathaFS stores a bitmap, fixed inode table and direct block
+references. Operations validate bounds and metadata. Sync flushes the disk cache,
+but there is no journal or power-loss atomicity. The shutdown syscall syncs then
+halts with a visible safe-to-close screen. Reboot uses the 8042 reset command.
+This fallback is intentional and does not claim ACPI hardware power-off.
+
+## Verification boundary
+
+QEMU TCG standard VGA/IDE/PS2 is the automated target. Tests use private copies of
+the seed, serial markers, QMP input/registers/screenshots and independent disk
+parsing. A separate 600-second minimum soak checks normal application activity,
+window operations, post-close physical frames/heap and idle redraw bounds.
+A passing soak establishes that run's behavior, not indefinite stability.

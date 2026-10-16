@@ -23,6 +23,7 @@ int app_main(unsigned argument) {
     const char *menus[]={"Up","Refresh","Open"};
     for(;;){
         if(!ui_poll(&u)&&!first){g_sleep(2);continue;}first=0;
+        struct g_event event=u.e; if(confirm)u.e.type=0;
         ui_begin(&u);int menu=ui_menu(&u,menus,3);
         if(menu==0){unsigned n=(unsigned)g_strlen(directory);while(n>1 && directory[n-1]!='/')--n;if(n>1)--n;directory[n]=0;refresh();}
         if(menu==1)refresh();if(menu==2)open_selected();
@@ -39,6 +40,7 @@ int app_main(unsigned argument) {
         if(ui_button(&u,248,y+40,110,"Rename") && selected>=0){char old[256];app_path(old,directory,entries[selected].name);app_status(status,"Rename",g_rename(old,path));refresh();g_puts("FILES: renamed\n");}
         if(ui_button(&u,366,y+40,100,"Delete") && selected>=0)confirm=1;
         ui_label(&u,12,u.height-20,status,UI_INK);
+        u.e=event;
         if(confirm && ui_dialog(&u,"Delete selected item","OK removes this item.\nPress Escape to cancel.")){
             if(selected>=0){app_path(path,directory,entries[selected].name);app_status(status,"Delete",g_unlink(path));refresh();g_puts("FILES: deleted\n");}confirm=0;
         }

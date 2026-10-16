@@ -9,6 +9,8 @@
 #include "../libgatha/memory.h"
 #include "drivers/input.h"
 #include "graphics_demo.h"
+#include "drivers/framebuffer.h"
+#include "../gui/gfx/gfx.h"
 #include "../gui/wm/wm.h"
 #include "sched/task.h"
 static struct boot_info boot_state;
@@ -79,6 +81,14 @@ void kernel_main(const struct boot_info *b) {
     heap_init();
     memory_self_test();
 #if DEBUG_FAULT == 0
+    framebuffer_init(b);
+    gfx_gradient(0,0,(int)b->width,(int)b->height,0xe9f0f7,0xc5d6e7);
+    int sx=(int)b->width/2-112,sy=(int)b->height/2-48;
+    gfx_text(sx,sy,"GathaOS",0x426d9c,3);
+    gfx_text(sx,sy+62,"Starting your desktop...",0x526f8c,1);
+    gfx_rect(sx,sy+96,224,3,0xa9bfd5);gfx_rect(sx,sy+96,80,3,0x426d9c);
+    framebuffer_present(0,0,(int)b->width,(int)b->height);
+    klog("SPLASH: presented\r\n");
     if (fs_mount()) panic("GATHAFS MOUNT FAILED - ATTACH IDE DISK",0);
     fs_self_test();
     wm_init(b);

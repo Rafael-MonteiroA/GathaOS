@@ -4,7 +4,7 @@ Start lists Terminal, Files, Text Editor, Calculator, Settings, System Monitor,
 Paint, About GathaOS and the earlier Widgets demo. Every launch creates a new
 ring-3 process with its own page directory. Each application is separately
 compiled and packed as GEX1. Built-in images are embedded in the kernel so an
-older compatible data disk still works; a new Stage 7 seed also contains their
+older compatible data disk still works; a fresh release seed also contains their
 standalone executables under /System/Apps. Files can launch these disk GEXs.
 
 ## Terminal / GathaShell
@@ -16,8 +16,8 @@ quoting, pipes, redirection, background jobs and scripting are not implemented.
 The terminal retains 80 lines and displays the latest fitting lines. Ctrl+L
 clears output. cp handles files up to GathaFS's 192 KiB limit. rm refuses open
 files and nonempty directories. reboot flushes the filesystem and requests an
-8042 reset; shutdown flushes and halts with a safe-to-close screen. Stage 8 adds
-automatic power-off where supported.
+8042 reset; shutdown flushes and halts with a safe-to-close screen. This release
+uses that fallback and does not implement automatic ACPI hardware power-off.
 
 ## Files
 
@@ -69,7 +69,9 @@ original, little-endian, uncompressed format (41,008 bytes):
 | 16 | eight u32 RGB colors |
 | 48 | 40,960 row-major bytes, each a palette index 0..7 |
 
-About GathaOS is its own user process/window with project and runtime details.
+Invalid Paint files leave the current drawing untouched.
+
+About GathaOS is its own user process/window with a welcome message and version.
 
 ## ABI additions
 

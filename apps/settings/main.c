@@ -17,7 +17,7 @@ int app_main(unsigned argument) {
         ui_label(&u,20,20,"Make GathaOS yours",UI_INK);ui_label(&u,20,58,"Wallpaper",UI_INK);
         const char *names[]={"Ocean","Dusk","Meadow"};
         for(int i=0;i<3;++i)if(ui_button(&u,20+i*150,86,136,names[i])){wall=i;g_call(SYS_THEME,color,(unsigned)wall,0,0,0);g_puts("SETTINGS: wallpaper changed\n");}
-        ui_label(&u,20,136,"Window accent",UI_INK);unsigned colors[]={0x187e83,0x5969b0,0xa35166};
+        ui_label(&u,20,136,"Window accent",UI_INK);unsigned colors[]={0x426d9c,0x71699b,0x568377};
         for(int i=0;i<3;++i){ui_rect(&u,20+i*150,164,136,32,colors[i]);if(ui_hit(&u,20+i*150,164,136,32)){color=colors[i];g_call(SYS_THEME,color,(unsigned)wall,0,0,0);g_puts("SETTINGS: accent changed\n");}}
         app_number(&u,20,222,"Screen width: ",info.width);app_number(&u,260,222,"Height: ",info.height);
         char date[32];date_text(date,info.seconds);ui_label(&u,20,252,date,UI_INK);

@@ -25,7 +25,7 @@ static int order[WINDOWS],count,focus=-1,drag=-1,dragx,dragy;
 static int width,height,mx,my,buttons,menu;
 extern const char *desktop_names[];
 static int dx,dy,dr,db,damaged;
-static unsigned next_id=1,frames,pixels_drawn,drops,accent=0x187e83,wallpaper;
+static unsigned next_id=1,frames,pixels_drawn,drops,accent=0x426d9c,wallpaper;
 static void log_window(const char *what,const struct window *w) {
     klog("WM: "); klog(what); klog(" id="); klog_u32(w->id); klog(" owner="); klog_u32(w->owner);
     klog(" x="); klog_u32((unsigned)w->x); klog(" y="); klog_u32((unsigned)w->y);
@@ -159,42 +159,89 @@ int wm_call(struct interrupt_frame *f) {
     if(f->esi&2)w->batching=0;
     gfx_target(0,0,0); if (!w->minimized) damage(w->x+2,w->y+32,w->w,w->h); return 0;
 }
+/* Original geometric artwork; all surfaces retain their existing hit regions. */
+static void folder_icon(int x,int y,int size) {
+    gfx_rect(x+2,y,size/2,7,0xb48d48);
+    gfx_rect(x,y+5,size,size*3/4,0xb48d48);
+    gfx_gradient(x+1,y+6,size-2,size*3/4-2,0xffe8a6,0xe4bb69);
+    gfx_line(x+2,y+7,x+size-3,y+7,0xfff5d7);
+}
+static void caption_button(int x,int y,int kind,int active) {
+    gfx_rect(x,y,23,22,active?0x345779:0x9baabd);
+    gfx_gradient(x+1,y+1,21,20,kind==2?0xf7e5df:0xffffff,kind==2?0xd7a798:0xd1deeb);
+    unsigned ink=kind==2?0x7e493e:0x34516e;
+    if(kind==0)gfx_rect(x+6,y+14,11,2,ink);
+    else if(kind==1){gfx_rect(x+6,y+6,11,10,ink);gfx_rect(x+7,y+9,9,6,0xf0f5fa);}
+    else {gfx_line(x+7,y+7,x+15,y+15,ink);gfx_line(x+15,y+7,x+7,y+15,ink);}
+}
+static void paint_desktop(void) {
+    const unsigned tops[3]={0x9dbbd0,0xb6b0ce,0xa8c2b5}, bottoms[3]={0x557fa2,0x777e9c,0x658f85};
+    gfx_gradient(0,0,width,height,tops[wallpaper],bottoms[wallpaper]);
+    /* Broad, quiet ribbons are computed only for damaged scanlines. */
+    for(int y=dy;y<db && y<height-42;++y){
+        int bend=(y-height/2)*(y-height/2)/(height*2);
+        int edge=width*3/4+bend-y/3;
+        unsigned base=gfx_blend(tops[wallpaper],bottoms[wallpaper],(unsigned)y*255/(unsigned)(height-1));
+        gfx_rect(edge,y,width-edge,1,gfx_blend(base,0xffffff,14));
+        gfx_rect(edge+70,y,width-edge-70,1,gfx_blend(base,0xffffff,9));
+    }
+    gfx_text(width-230,height-144,"GathaOS",0xe6eef5,2);
+    gfx_text(width-228,height-105,"Make yourself at home.",0xd2e1ed,1);
+    folder_icon(34,34,42);
+    gfx_text(29,89,"Files",0x45617c,1);gfx_text(28,88,"Files",0xffffff,1);
+}
 static void render(void) {
     if (!damaged) return;
     for(int i=0;i<WINDOWS;++i)if(windows[i].batching){if(pit_ticks()-windows[i].batch_tick<50)return;windows[i].batching=0;}
     gfx_clip(dx,dy,dr-dx,db-dy);
-    const unsigned tops[3]={0x17374d,0x302b4c,0x264637}, bottoms[3]={0x0c1c30,0x161c32,0x122c29};
-    gfx_gradient(0,0,width,height,tops[wallpaper],bottoms[wallpaper]);
-    gfx_text(width-330,height-180,"GathaOS",0x608a9a,3);
-    gfx_text(width-328,height-120,"A small world of your own.",0x608a9a,1);
-    gfx_round_rect(28,32,56,48,9,accent); gfx_text(44,48,"G",0xffffff,2);
-    gfx_text(28,90,"Files",0xe5f1f3,1);
+    paint_desktop();
     for (int z=0;z<count;++z) {
         int slot=order[z]; struct window *w=&windows[slot]; if (w->minimized) continue;
-        gfx_rect(w->x+5,w->y+6,w->w+4,w->h+34,0x0b1828);
-        gfx_rect(w->x,w->y,w->w+4,w->h+34,slot==focus?accent:0x475c72);
-        gfx_text(w->x+12,w->y+9,w->title,0xffffff,1);
-        gfx_text(w->x+w->w-78,w->y+9,"_",0xffffff,1);
-        gfx_text(w->x+w->w-48,w->y+9,w->maximized?"o":"[]",0xffffff,1);
-        gfx_text(w->x+w->w-18,w->y+9,"x",0xffffff,1);
+        gfx_rect(w->x+5,w->y+6,w->w+4,w->h+34,0x526b83);
+        gfx_rect(w->x,w->y,w->w+4,w->h+34,slot==focus?0x3b6085:0x8c9db0);
+        unsigned bar=slot==focus?accent:0x97aabd;
+        gfx_gradient(w->x+1,w->y+1,w->w+2,30,gfx_blend(bar,0xffffff,75),bar);
+        gfx_line(w->x+2,w->y+1,w->x+w->w+1,w->y+1,0xc4d5e7);
+        gfx_rect(w->x+9,w->y+10,12,12,0xe8f1fa);
+        gfx_rect(w->x+11,w->y+12,8,3,bar);
+        gfx_text(w->x+29,w->y+9,w->title,0xffffff,1);
+        caption_button(w->x+w->w-84,w->y+5,0,slot==focus);
+        caption_button(w->x+w->w-54,w->y+5,1,slot==focus);
+        caption_button(w->x+w->w-24,w->y+5,2,slot==focus);
         int left=w->x+2>dx?w->x+2:dx,top=w->y+32>dy?w->y+32:dy;
         int right=w->x+2+w->w<dr?w->x+2+w->w:dr,bottom=w->y+32+w->h<db?w->y+32+w->h:db;
         for (int y=top;y<bottom;++y) if (right>left)
             memcpy(framebuffer_buffer()+y*width+left,w->pixels+(y-w->y-32)*w->w+left-w->x-2,(unsigned)(right-left)*4);
     }
-    gfx_rect(0,height-42,width,42,0x102234);
-    gfx_round_rect(8,height-36,92,30,5,accent); gfx_text(20,height-29,"G  Start",0xffffff,1);
+    gfx_gradient(0,height-42,width,42,0xf4f7fb,0xc4d2e1);
+    gfx_line(0,height-42,width,height-42,0xffffff);
+    gfx_rect(8,height-36,92,30,0x426185);
+    gfx_gradient(9,height-35,90,28,0x7599bd,accent);
+    gfx_rect(17,height-28,12,12,0xe6eef6);
+    gfx_text(38,height-29,"Start",0xffffff,1);
     for (int z=0;z<count;++z) {
         struct window *w=&windows[order[z]]; int x=110+z*94;
-        gfx_rect(x,height-34,88,28,order[z]==focus&&!w->minimized?accent:0x294057);
-        char short_title[10]; g_copy(short_title,w->title,10); gfx_text(x+6,height-28,short_title,0xffffff,1);
+        int active=order[z]==focus&&!w->minimized;
+        gfx_rect(x,height-34,88,28,active?0x7993b0:0xa5b5c8);
+        gfx_gradient(x+1,height-33,86,26,active?0xc2d4e7:0xf6f9fc,active?0xe2ecf6:0xdde5ef);
+        char short_title[10]; g_copy(short_title,w->title,10); gfx_text(x+6,height-28,short_title,0x20344d,1);
     }
     unsigned seconds=rtc_seconds(),hour=seconds/3600%24; char clock[6]={(char)('0'+hour/10),(char)('0'+hour%10),':',(char)('0'+seconds/60%60/10),(char)('0'+seconds/60%10),0};
-    gfx_text(width-64,height-28,clock,0xbfe2e9,1);
+    gfx_line(width-78,height-33,width-78,height-9,0xa5b6c9);
+    gfx_text(width-64,height-28,clock,0x395570,1);
     if (menu) {
-        gfx_round_rect(8,height-390,244,340,8,0xf1f5f9);
-        gfx_text(24,height-374,"GathaOS / Applications",0x20344d,1);
-        for(int i=0;i<9;++i){gfx_rect(16,height-340+i*30,228,28,i&1?0xe3ecee:0xf1f5f9);gfx_text(28,height-334+i*30,desktop_names[i],0x20344d,1);}
+        gfx_rect(11,height-387,244,340,0x526b83);
+        gfx_rect(8,height-390,244,340,0x8198b1);
+        gfx_rect(9,height-389,242,338,0xf9fbfd);
+        gfx_gradient(10,height-388,240,42,0x769abe,accent);
+        gfx_text(24,height-374,"GathaOS",0xffffff,1);
+        for(int i=0;i<9;++i){
+            int y=height-340+i*30,hover=mx>=16&&mx<244&&my>=y&&my<y+30;
+            if(hover)gfx_rect(14,y,232,28,0xdce9f6);
+            if(i==1)folder_icon(24,y+8,16);
+            else {gfx_rect(24,y+6,16,16,0x8da6bd);gfx_rect(25,y+7,14,14,0xf1f6fb);gfx_rect(28,y+10,8,3,accent);gfx_line(28,y+16,35,y+16,0x8da6bd);}
+            gfx_text(52,y+6,desktop_names[i],0x20344d,1);
+        }
     }
     for (int y=0;y<18;++y) for (int x=0;x<=y/2;++x) gfx_pixel(mx+x,my+y,x==0||x==y/2||y==17?0x102234:0xffffff);
     gfx_clip(0,0,width,height); framebuffer_present(dx,dy,dr-dx,db-dy);
@@ -205,6 +252,7 @@ static void handle(const struct input_event *e) {
         if (focus>=0 && !windows[focus].minimized) queue(&windows[focus],(struct g_event){.type=G_KEY,.code=e->code,.ascii=e->ascii,.mods=e->modifiers,.pressed=e->pressed});
         return;
     }
+    if(menu)damage(8,height-390,248,344);
     damage(mx,my,12,20); mx=e->x; my=e->y; damage(mx,my,12,20);
     int pressed=(int)e->buttons&~buttons,released=buttons&~(int)e->buttons; buttons=(int)e->buttons;
     klog("INPUT: mouse x="); klog_u32((unsigned)mx); klog(" y="); klog_u32((unsigned)my); klog(" buttons="); klog_u32((unsigned)buttons); klog("\r\n");
@@ -252,13 +300,13 @@ static void handle(const struct input_event *e) {
     }
 }
 void wm_init(const struct boot_info *boot) {
-    framebuffer_init(boot); gfx_self_test(); input_self_test();
+    gfx_self_test(); input_self_test();
     width=(int)boot->width; height=(int)boot->height; mx=width/2; my=height/2;
     damage(0,0,width,height); render(); klog("WM: compositor buffers damage queue ready\r\n");
 }
 void wm_run(void) {
     (void)desktop_launch(APP_ABOUT);
-    klog("STAGE7: READY\r\n"); unsigned next=100,clock=0;
+    klog("STAGE7: READY\r\nSTAGE8: READY\r\n"); unsigned next=100,clock=0;
     extern void tasks_demo_report(void);
     for (;;) {
         unsigned now=pit_ticks(); uint32_t flags=irq_save(); struct input_event e;
@@ -267,7 +315,11 @@ void wm_run(void) {
         render(); irq_restore(flags); task_reap();
         if (now-next<0x80000000u) {
             klog("PIT: ticks="); klog_u32(now); klog("\r\n"); tasks_demo_report();
-            if (next==300) klog("STAGE3: PASS\r\nSTAGE7: PASS\r\n"); next+=100;
+            if (next==300) klog("STAGE3: PASS\r\nSTAGE7: PASS\r\nSTAGE8: PASS\r\n"); next+=100;
+            klog("HEALTH: windows=");klog_u32((unsigned)count);
+            klog(" free=");klog_u32(pmm_free_frames());klog(" heap=");klog_u32(heap_mapped_bytes());
+            klog(" frames=");klog_u32(frames);klog(" pixels=");klog_u32(pixels_drawn);
+            klog(" drops=");klog_u32(drops);klog("\r\n");
         }
         __asm__ volatile("sti; hlt" : : : "memory");
     }

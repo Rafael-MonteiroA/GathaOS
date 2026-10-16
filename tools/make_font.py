@@ -1,4 +1,4 @@
-"""Expand Gatha's original 5x7 drawings into fixed 8x16 bitmap cells.
+"""Set original Gatha drawings in compact, readable 8x16 bitmap cells.
 
 All drawings are original project artwork, not imported font data.
 This is a maintenance tool; normal builds use the checked-in font.h.
@@ -45,7 +45,9 @@ lines = ['/* Original Gatha 8x16 font. See docs/graphics-font-license.txt. */',
 for code in range(32, 127):
     rows = glyphs[chr(code)]
     assert len(rows) == 7 and all(0 <= row < 32 for row in rows)
-    bitmap = [0] + [row << 2 for row in rows for _ in range(2)] + [0]
+    # A six-pixel body and nine-pixel cap height avoid the old stretched look.
+    wide = [((row & 0x1c) << 2) | ((row & 4) << 1) | ((row & 3) << 1) for row in rows]
+    bitmap = [0]*3 + [wide[i] for i in (0,1,1,2,3,4,5,5,6)] + [0]*4
     lines.append('    {' + ','.join(f'0x{row:02x}' for row in bitmap) + f'}}, /* ASCII {code} */')
 lines += ['};', '#endif', '']
 (root / 'gui/gfx/font.h').write_text('\n'.join(lines))

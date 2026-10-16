@@ -28,9 +28,9 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage7-apps$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage7-apps-page.iso
-DISK ?= dist/gathaos-stage7-disk.img
+ISO ?= dist/gathaos-stage8-release$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage8-release-page.iso
+DISK ?= dist/gathaos-stage8-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -123,6 +123,11 @@ $(BUILD)/about.gex: $(BUILD)/about.elf tools/gex.py
 $(BUILD)/about-gex.o: $(BUILD)/about.gex
 	$(CC) $(CFLAGS) -c $(BUILD)/about.c -o $@
 iso: $(ISO) $(DISK) dist/gathaos-disk.img
+ifeq ($(ISO),dist/gathaos-stage8-release.iso)
+iso: dist/gathaos-1.0-rc1.iso
+dist/gathaos-1.0-rc1.iso: $(ISO)
+	if test -e "$@"; then cmp "$<" "$@"; else cp "$<" "$@"; fi
+endif
 $(DISK): tools/mkgathafs.py $(shell find rootfs -type f) $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS)))
 	mkdir -p $(BUILD)/rootfs/System/Apps
 	cp -a rootfs/. $(BUILD)/rootfs/
@@ -162,12 +167,13 @@ test: test-boot
 ifeq ($(DEBUG_FAULT),none)
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage7-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage8-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage7-apps-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage7-apps-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage7-apps-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage8-release-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage8-release-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage8-release-gp.iso test-boot
 	$(PYTHON) tools/power_test.py "$(ISO)" "$(DISK)"
+	$(PYTHON) tools/soak_test.py "$(ISO)" "$(DISK)"
 endif
 clean:
 	rm -rf build

@@ -44,8 +44,11 @@ int ui_hit(struct ui *u,int x,int y,int w,int h) {
 }
 int ui_button(struct ui *u,int x,int y,int w,const char *label) {
     int hit=ui_hit(u,x,y,w,28);
-    ui_rect(u,x,y,w,28,hit?0x125c63:UI_ACCENT);
-    ui_label(u,x+8,y+6,label,0xffffff); return hit;
+    ui_rect(u,x,y,w,28,0x8b9daf);
+    ui_rect(u,x+1,y+1,w-2,26,hit?0xd6e3ef:0xe5eaf0);
+    ui_rect(u,x+2,y+2,w-4,11,hit?0xd6e3ef:0xfafcfe);
+    ui_line(u,x+1,y+26,x+w-2,y+26,0xc1ccd8);
+    ui_label(u,x+8,y+6,label,UI_INK); return hit;
 }
 int ui_checkbox(struct ui *u,int x,int y,const char *label,int *value) {
     int hit=ui_hit(u,x,y,24+(int)g_strlen(label)*8,24);
@@ -120,7 +123,7 @@ int ui_textbox(struct ui *u,int x,int y,int w,int h,struct ui_text *t) {
     for (unsigned p=0;p<n;++p) {
         if (r>=t->scroll && r<t->scroll+rows && t->data[p]!='\n') {
             int px=x+8+(int)c*8,py=y+6+(int)(r-t->scroll)*20;
-            if (p>=lo && p<hi) ui_rect(u,px,py,8,18,0xbde8e5);
+            if (p>=lo && p<hi) ui_rect(u,px,py,8,18,0xcbdff3);
             char ch[2]={t->data[p],0}; ui_label(u,px,py,ch,UI_INK);
         }
         if (t->data[p]=='\n' || ++c==cols) { ++r; c=0; }
@@ -132,7 +135,7 @@ int ui_list(struct ui *u,int x,int y,int w,const char *const *items,int count,in
     int hit=-1; ui_rect(u,x,y,w,visible*24,0xffffff);
     for (int row=0;row<visible && row+offset<count;++row) {
         int i=row+offset; if (ui_hit(u,x,y+row*24,w,24)) { *selected=i; hit=i; }
-        if (*selected==i) ui_rect(u,x,y+row*24,w,24,0xcbe9e8);
+        if (*selected==i) ui_rect(u,x,y+row*24,w,24,0xd8e7f6);
         ui_label(u,x+8,y+row*24+4,items[i],UI_INK);
     }
     return hit;
@@ -146,7 +149,7 @@ int ui_scrollbar(struct ui *u,int x,int y,int h,int *offset,int count,int visibl
     return old!=*offset;
 }
 int ui_menu(struct ui *u,const char *const *items,int count) {
-    ui_rect(u,0,0,u->width,30,0xdce5ed); int hit=-1;
+    ui_rect(u,0,0,u->width,30,0xe9edf2); ui_line(u,0,29,u->width,29,0xc7d0db); int hit=-1;
     for (int i=0;i<count;++i) { ui_label(u,12+i*100,7,items[i],UI_INK); if (ui_hit(u,i*100,0,100,30)) hit=i; }
     return hit;
 }

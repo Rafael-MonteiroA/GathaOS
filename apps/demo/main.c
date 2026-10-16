@@ -22,7 +22,7 @@ int app_main(unsigned argument) {
     const char message[] = "USERTEST: invalid pointer and syscall rejected PASS\r\n";
     g_log(message,sizeof(message)-1);
     unsigned frame = 0;
-    for (;;) {
+    while (g_ticks()<600) {
         (void)g_call(SYS_DEMO,frame++,0,0,0,0);
         if (argument == 1) g_sleep(3);
         else {
@@ -31,4 +31,5 @@ int app_main(unsigned argument) {
             g_yield();
         }
     }
+    return 0;
 }
