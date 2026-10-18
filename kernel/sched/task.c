@@ -38,7 +38,7 @@ static void initial_frame(struct task *t, uint32_t entry, unsigned user) {
     t->frame->ds = t->frame->es = t->frame->fs = t->frame->gs = user ? 0x23 : 0x10;
     t->frame->cs = user ? 0x1b : 8; t->frame->eflags = 0x202; t->frame->eip = entry;
     t->frame->eax = t->argument;
-    if (user) { uint32_t *tail = (void *)(t->frame + 1); tail[0] = 0x800000; tail[1] = 0x23; }
+    if (user) { uint32_t *tail = (void *)(t->frame + 1); tail[0] = t->user_stack_top; tail[1] = 0x23; }
     t->user = user; t->state = TASK_READY;
 }
 static void kernel_entry(void) { task_current()->function(); g_exit(0); }
@@ -54,19 +54,21 @@ int task_spawn(const void *image, unsigned size, unsigned argument, const char *
     if (size < 32) return -1;
     uint32_t h[8]; memcpy(h,image,32);
     const uint8_t *data = (const uint8_t *)image + 32;
-    if (h[0] != 0x31584547 || h[1] != 1 || h[2] != 0x400000 ||
+    if (h[0] != 0x31584547 || (h[1] != 1 && h[1] != 2) || h[2] != USER_BASE ||
         !h[4] || h[4] % PAGE_SIZE || h[3] >= h[4] || h[4] > h[5] ||
-        h[5] != size - 32 || h[5] > h[6] || h[6] > 0x300000 || h[6] % PAGE_SIZE) return -1;
+        h[5] != size - 32 || h[5] > h[6] || h[6] > (h[1] == 1 ? 0x300000u : USER_IMAGE_MAX) || h[6] % PAGE_SIZE) return -1;
     uint32_t sum = 2166136261u;
     for (unsigned i = 0; i < h[5]; ++i) sum = (sum ^ data[i]) * 16777619u;
     if (sum != h[7]) return -1;
     uint32_t flags = irq_save(); int slot = reserve(name);
     if (slot < 0) { irq_restore(flags); return -1; }
     struct task *t = &tasks[slot]; t->directory = paging_user_create(); t->argument = argument;
+    t->user_stack_top = h[1] == 1 ? 0x800000 : USER_STACK_TOP;
+    t->heap_break = USER_HEAP_BASE;
     if (!t->directory) goto failed;
     for (unsigned page = 0; page < h[6] / PAGE_SIZE + 16; ++page) {
         uint32_t offset = page * PAGE_SIZE;
-        uint32_t address = offset < h[6] ? 0x400000 + offset : 0x7f0000 + offset - h[6];
+        uint32_t address = offset < h[6] ? USER_BASE + offset : t->user_stack_top - USER_STACK_BYTES + offset - h[6];
         uint32_t physical = pmm_alloc();
         if (!physical) goto failed;
         memset(physical_pointer(physical),0,PAGE_SIZE);
@@ -83,6 +85,30 @@ int task_spawn(const void *image, unsigned size, unsigned argument, const char *
 failed:
     paging_user_destroy(t->directory); kfree(t->stack); memset(t,0,sizeof(*t));
     irq_restore(flags); return -1;
+}
+int32_t task_sbrk(int32_t increment) {
+    struct task *t = task_current();
+    if (!t->user) return -13;
+    uint32_t old = t->heap_break;
+    int64_t requested = (int64_t)old + increment;
+    if (requested < USER_HEAP_BASE || requested > USER_LIMIT) return -12;
+    uint32_t end = (uint32_t)requested;
+    uint32_t first = (old + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+    uint32_t last = (end + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+    uint32_t address = first;
+    for (; address < last; address += PAGE_SIZE) {
+        uint32_t frame = pmm_alloc();
+        if (!frame) break;
+        memset(physical_pointer(frame), 0, PAGE_SIZE);
+        if (!paging_user_map(t->directory, address, frame, 1)) { pmm_free(frame); break; }
+    }
+    if (address < last) {
+        while (address > first) { address -= PAGE_SIZE; paging_user_unmap(t->directory, address); }
+        return -12;
+    }
+    for (address = last; address < first; address += PAGE_SIZE) paging_user_unmap(t->directory, address);
+    t->heap_break = end;
+    return (int32_t)old;
 }
 struct interrupt_frame *schedule(struct interrupt_frame *f, int force) {
     if (!active) return f;

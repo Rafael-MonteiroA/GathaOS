@@ -1,10 +1,12 @@
-"""Original GathaFS v1 builder, reader and structural verifier (host only)."""
+"""Original GathaFS v1/v2 builder, reader and structural verifier (host only)."""
 from pathlib import Path
 import struct
 import sys
 BLOCK = 4096
 INODES = 128
 DIRECT = 48
+V2_DIRECT = 47
+MAX_SIZE = 4*1024*1024
 BLOCKS = 8192
 STAMP = 1767225600
 NODE = struct.Struct('<6I40s48I')
@@ -14,11 +16,12 @@ def hash_bytes(data):
     for byte in data: h = ((h ^ byte)*16777619) & 0xffffffff
     return h
 
-def create(folder):
-    image = bytearray(BLOCKS*BLOCK)
+def create(folder, version=2, blocks=BLOCKS):
+    if version not in (1,2) or not 16 <= blocks <= 32768: raise ValueError('Invalid volume options')
+    image = bytearray(blocks*BLOCK)
     bitmap = bytearray(BLOCK)
     for i in range(10): bitmap[i//8] |= 1 << (i%8)
-    header = struct.pack('<11I',0x31534647,1,BLOCK,BLOCKS,INODES,1,2,10,0,STAMP,0)
+    header = struct.pack('<11I',0x31534647,version,BLOCK,blocks,INODES,1,2,10,0,STAMP,0)
     image[:48] = header+struct.pack('<I',hash_bytes(header))
     records = [(None,0,'/',2)]
     def descend(path,parent):
@@ -34,15 +37,22 @@ def create(folder):
     next_block = 10
     for i,(path,parent,name,kind) in enumerate(records):
         data = path.read_bytes() if kind == 1 else b''
-        if len(data) > DIRECT*BLOCK: raise ValueError('File exceeds 192 KiB')
-        blocks = []
+        if len(data) > (DIRECT*BLOCK if version == 1 else MAX_SIZE): raise ValueError('File exceeds volume limit')
+        pointers = []
         for offset in range(0,len(data),BLOCK):
-            if next_block >= BLOCKS: raise ValueError('Disk full')
+            if next_block >= blocks: raise ValueError('Disk full')
             block = next_block; next_block += 1
-            blocks.append(block); bitmap[block//8] |= 1 << (block%8)
+            pointers.append(block); bitmap[block//8] |= 1 << (block%8)
             chunk = data[offset:offset+BLOCK]
             image[block*BLOCK:block*BLOCK+len(chunk)] = chunk
-        node = NODE.pack(1,kind,parent,len(data),STAMP,STAMP,name.encode('ascii'),*(blocks+[0]*(DIRECT-len(blocks))))
+        if version == 2 and len(pointers) > V2_DIRECT:
+            if next_block >= blocks: raise ValueError('Disk full')
+            indirect = next_block; next_block += 1
+            bitmap[indirect//8] |= 1 << (indirect%8)
+            tail = pointers[V2_DIRECT:]
+            struct.pack_into('<1024I',image,indirect*BLOCK,*(tail+[0]*(1024-len(tail))))
+            pointers = pointers[:V2_DIRECT]+[indirect]
+        node = NODE.pack(1,kind,parent,len(data),STAMP,STAMP,name.encode('ascii'),*(pointers+[0]*(DIRECT-len(pointers))))
         image[2*BLOCK+i*256:2*BLOCK+(i+1)*256] = node
     image[BLOCK:2*BLOCK] = bitmap
     validate(image)
@@ -51,13 +61,13 @@ def create(folder):
 def validate(image):
     if len(image) < 10*BLOCK: raise ValueError('Truncated volume')
     h = struct.unpack_from('<12I',image)
-    if h[:3] != (0x31534647,1,BLOCK) or not 16 <= h[3] <= 32768 or len(image) != h[3]*BLOCK or h[4:9] != (128,1,2,10,0) or h[10] or h[11] != hash_bytes(image[:44]):
+    if h[0] != 0x31534647 or h[1] not in (1,2) or h[2] != BLOCK or not 16 <= h[3] <= 32768 or len(image) != h[3]*BLOCK or h[4:9] != (128,1,2,10,0) or h[10] or h[11] != hash_bytes(image[:44]):
         raise ValueError('Invalid superblock')
     nodes = [NODE.unpack_from(image,2*BLOCK+i*256) for i in range(INODES)]
     used = set(range(10)); names = set()
     for i,n in enumerate(nodes):
         if not n[0]: continue
-        if n[1] not in (1,2) or n[2] >= INODES or not nodes[n[2]][0] or nodes[n[2]][1] != 2 or n[3] > DIRECT*BLOCK:
+        if n[1] not in (1,2) or n[2] >= INODES or not nodes[n[2]][0] or nodes[n[2]][1] != 2 or n[3] > (DIRECT*BLOCK if h[1] == 1 else MAX_SIZE):
             raise ValueError('Invalid inode')
         if b'\0' not in n[6]: raise ValueError('Unterminated name')
         name = n[6].split(b'\0',1)[0]
@@ -69,7 +79,16 @@ def validate(image):
             ancestors.add(parent); parent = nodes[parent][2]
         count = (n[3]+BLOCK-1)//BLOCK
         if n[1] == 2 and n[3]: raise ValueError('Directory data not allowed')
-        for j,block in enumerate(n[7:]):
+        refs = list(n[7:])
+        if h[1] == 2:
+            pointer = refs.pop()
+            if count <= V2_DIRECT:
+                if pointer: raise ValueError('Unexpected indirect block')
+            else:
+                if pointer < 10 or pointer >= h[3] or pointer in used: raise ValueError('Invalid indirect block')
+                used.add(pointer)
+                refs.extend(struct.unpack_from('<1024I',image,pointer*BLOCK))
+        for j,block in enumerate(refs):
             if j >= count:
                 if block: raise ValueError('Trailing block reference')
             elif block < 10 or block >= h[3] or block in used: raise ValueError('Duplicate/invalid data block')
@@ -87,14 +106,18 @@ def read_file(image,path):
         current = found[0]
     n = nodes[current]
     if n[1] != 1: raise ValueError('Not a file')
-    return b''.join(image[b*BLOCK:(b+1)*BLOCK] for b in n[7:] if b)[:n[3]]
+    refs = list(n[7:])
+    if struct.unpack_from('<I',image,4)[0] == 2:
+        pointer = refs.pop()
+        if pointer: refs.extend(struct.unpack_from('<1024I',image,pointer*BLOCK))
+    return b''.join(image[b*BLOCK:(b+1)*BLOCK] for b in refs if b)[:n[3]]
 
 def main():
     if sys.argv[1] == 'check':
         validate(Path(sys.argv[2]).read_bytes()); print('GATHAFS CHECK PASS'); return
     if sys.argv[1] == 'read':
         sys.stdout.buffer.write(read_file(Path(sys.argv[2]).read_bytes(),sys.argv[3])); return
-    source,target = map(Path,sys.argv[1:3]); data = create(source)
+    source,target = map(Path,sys.argv[1:3]); data = create(source,version=1 if '--v1' in sys.argv[3:] else 2)
     target.parent.mkdir(parents=True,exist_ok=True)
     if target.exists() and target.read_bytes() != data: raise SystemExit('Refusing to replace existing disk image: '+str(target))
     if not target.exists(): target.write_bytes(data)

@@ -76,37 +76,60 @@ uint32_t paging_physical(uint32_t address) {
 }
 uint32_t paging_kernel_directory(void) { return physical(directory); }
 uint32_t paging_user_create(void) {
-    uint32_t pd = pmm_alloc(), pt = pmm_alloc();
-    if (!pd || !pt) { if (pd) pmm_free(pd); if (pt) pmm_free(pt); return 0; }
+    uint32_t pd = pmm_alloc();
+    if (!pd) return 0;
     uint32_t *d = physical_pointer(pd);
     memcpy(d, directory, PAGE_SIZE);
-    memset(physical_pointer(pt), 0, PAGE_SIZE);
-    d[1] = pt | 7;
     return pd;
 }
 int paging_user_map(uint32_t pd, uint32_t address, uint32_t frame, int writable) {
-    if (address < 0x400000 || address >= 0x800000 || (address | frame) % PAGE_SIZE || !frame) return 0;
-    uint32_t *d = physical_pointer(pd), *pt = physical_pointer(d[1] & 0xfffff000);
+    if (address < USER_BASE || address >= USER_LIMIT || (address | frame) % PAGE_SIZE ||
+        !frame || frame >= PHYSICAL_LIMIT || !pd) return 0;
+    uint32_t *d = physical_pointer(pd);
+    if (!(d[address >> 22] & PRESENT)) {
+        uint32_t table = pmm_alloc();
+        if (!table) return 0;
+        memset(physical_pointer(table), 0, PAGE_SIZE);
+        d[address >> 22] = table | 7;
+    }
+    uint32_t *pt = physical_pointer(d[address >> 22] & 0xfffff000);
     unsigned i = (address >> 12) & 1023;
     if (pt[i]) return 0;
     pt[i] = frame | 5u | (writable ? 2u : 0u);
     return 1;
 }
+void paging_user_unmap(uint32_t pd, uint32_t address) {
+    if (!pd || address < USER_BASE || address >= USER_LIMIT || address % PAGE_SIZE) return;
+    uint32_t *d = physical_pointer(pd), index = address >> 22;
+    if (!(d[index] & PRESENT)) return;
+    uint32_t *pt = physical_pointer(d[index] & 0xfffff000), i = (address >> 12) & 1023;
+    if (pt[i] & PRESENT) pmm_free(pt[i] & 0xfffff000);
+    pt[i] = 0;
+    __asm__ volatile("invlpg (%0)" : : "r"(address) : "memory");
+    for (i = 0; i < 1024; ++i) if (pt[i] & PRESENT) return;
+    pmm_free(d[index] & 0xfffff000); d[index] = 0;
+}
 void paging_user_destroy(uint32_t pd) {
     if (!pd || pd == physical(directory)) return;
-    uint32_t *d = physical_pointer(pd), *pt = physical_pointer(d[1] & 0xfffff000);
-    for (unsigned i = 0; i < 1024; ++i) if (pt[i] & 1) pmm_free(pt[i] & 0xfffff000);
-    pmm_free(d[1] & 0xfffff000); pmm_free(pd);
+    uint32_t *d = physical_pointer(pd);
+    for (unsigned table = USER_BASE >> 22; table < USER_LIMIT >> 22; ++table) {
+        if (!(d[table] & PRESENT)) continue;
+        uint32_t *pt = physical_pointer(d[table] & 0xfffff000);
+        for (unsigned i = 0; i < 1024; ++i) if (pt[i] & PRESENT) pmm_free(pt[i] & 0xfffff000);
+        pmm_free(d[table] & 0xfffff000);
+    }
+    pmm_free(pd);
 }
 int user_range(uint32_t address, uint32_t size, int writable) {
     if (!size) return 1;
-    if (address < 0x400000 || address >= 0x800000 || size > 0x800000 - address) return 0;
+    if (address < USER_BASE || address >= USER_LIMIT || size > USER_LIMIT - address) return 0;
     uint32_t cr3;
     __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
     uint32_t *d = physical_pointer(cr3);
-    if ((d[1] & 5) != 5) return 0;
-    uint32_t *pt = physical_pointer(d[1] & 0xfffff000);
-    for (uint32_t p = address & 0xfffff000; p <= (address + size - 1) / PAGE_SIZE * PAGE_SIZE; p += PAGE_SIZE)
+    for (uint32_t p = address & 0xfffff000; p <= (address + size - 1) / PAGE_SIZE * PAGE_SIZE; p += PAGE_SIZE) {
+        if ((d[p >> 22] & 5) != 5) return 0;
+        uint32_t *pt = physical_pointer(d[p >> 22] & 0xfffff000);
         if ((pt[(p >> 12) & 1023] & (writable ? 7u : 5u)) != (writable ? 7u : 5u)) return 0;
+    }
     return 1;
 }

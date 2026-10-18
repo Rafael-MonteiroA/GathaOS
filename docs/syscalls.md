@@ -25,20 +25,23 @@ the kernel is preempted between syscalls, not in their critical sections.
 | 15 | stat | path, writable g_stat pointer | 0 |
 | 16 | rename | source path, destination path | 0 |
 | 17 | sync | — | 0 after ATA cache flush |
+| 29 | sbrk | signed byte increment | previous break, or -12 |
+| 30 | save | path, readable buffer, bytes | 0 after staged replacement/flush |
 
 Open flags: READ=1, WRITE=2, CREATE=4, TRUNC=8 (TRUNC requires WRITE). Paths are
 absolute, NUL-terminated and limited to 255 bytes. Seek cannot create holes.
 `g_stat` is four uint32 words: type (file=1/directory=2), size, created, modified.
 `g_dirent` is a 40-byte name followed by g_stat. Typical errors are -2 missing,
--5 I/O, -9 bad descriptor, -13 access mode, -14 bad user pointer, -16 busy,
+-5 I/O, -9 bad descriptor, -12 memory capacity, -13 access mode, -14 bad user pointer, -16 busy,
 -17 exists, -20 not a directory, -21 is a directory, -22 invalid, -24 descriptor
-limit, -28 capacity, -36 name/path too long, -39 non-empty and -74 bad volume.
+limit, -27 file too large, -28 capacity, -30 read-only, -36 name/path too long, -39 non-empty and -74 bad volume.
 
 Unknown calls return -38. Invalid lengths/delays return -22 where applicable.
 GUI calls 18 through 24 and their shared structures are specified in `gui.md`.
 Calls 25 through 28 (power, processes, argument and bitmap) are specified in
 `applications.md` and `gui.md`.
-User ranges must lie wholly in 0x00400000..0x007fffff, with user-present PTEs
+Calls 29/30 and their failure guarantees are specified in foundation.md.
+User ranges must lie wholly in 0x00400000..0x0bffffff, with user-present PDEs/PTEs
 and writable PTEs for output. Zero-length transfers do not dereference pointers.
 High kernel mappings are supervisor-only in every address space.
 

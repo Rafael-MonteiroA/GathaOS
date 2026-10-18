@@ -10,5 +10,5 @@ SECTIONS {
     .bss (NOLOAD) : { *(.bss*) *(COMMON) }
     . = ALIGN(4096); __user_mem_end = .;
     /DISCARD/ : { *(.comment) *(.eh_frame*) *(.note*) }
-    ASSERT(. <= 0x700000, "User image exceeds 3 MiB")
+    ASSERT(. <= 0x1400000, "User image exceeds 16 MiB")
 }

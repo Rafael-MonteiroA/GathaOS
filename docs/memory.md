@@ -11,7 +11,7 @@ The high BSS is cleared before C. EBX is converted to the high alias of boot inf
 The linker gives the bootstrap a low VMA/LMA and the main kernel a VMA offset
 of 0xc0000000 from its physical LMA. `llvm-objcopy` packs by load addresses;
 there is no 3 GiB hole in the raw image. Link-time checks bound BSS below 4 MiB
-and the packer still bounds the loaded payload at 64 KiB.
+and the packer bounds the loaded payload at 448 KiB (expanded in Stage 4).
 
 The kernel copies boot info into owned static storage and installs high GDT/IDT
 addresses. It builds final supervisor-only 4 KiB page tables, then switches CR3.
@@ -70,7 +70,8 @@ is unchanged. `kfree` trims wholly unused trailing pages while retaining 64 KiB.
 `heap_validate()` checks coverage, size/alignment, header magic, neighbor links
 and the absence of adjacent uncoalesced free blocks. Metadata is not isolated
 from callers: buffer overruns can still corrupt a kernel heap. There are no
-slabs, realloc, per-allocation guard pages, process heaps or SMP locks yet.
+slabs, kernel realloc, per-allocation guard pages or SMP locks yet. Stage 9
+adds separate user heaps and a user allocator; see foundation.md.
 
 ## Boot stress suite
 

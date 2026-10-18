@@ -1,4 +1,9 @@
-# GathaFS v1 disk format and VFS
+# GathaFS v1/v2 disk format and VFS
+
+Stage 9 builds version 2 volumes and retains read/write support for version 1.
+No existing volume is converted. New working disks use the separate
+dist/gathaos-foundation-disk.img path. See foundation.md for save semantics,
+compatibility and the read-only response to disk errors.
 
 GathaFS is an original fixed-capacity filesystem for the GathaOS IDE disk.
 The volume starts at sector zero, without a partition table. All integers are
@@ -12,7 +17,7 @@ The first twelve 32-bit words are:
 | Offset | Field/value |
 |---:|---|
 | 0 | Magic 0x31534647 (`GFS1`) |
-| 4 | Version 1 |
+| 4 | Version 1 or 2 |
 | 8 | Block size 4096 |
 | 12 | Total blocks (16..32768, within ATA capacity) |
 | 16 | Inode count 128 |
@@ -41,7 +46,7 @@ Blocks 2..9 hold 128 fixed 256-byte inodes. Inode zero is the root directory.
 | 16 | Created Unix timestamp |
 | 20 | Modified Unix timestamp |
 | 24 | NUL-terminated name, 40 bytes including terminator |
-| 64 | 48 direct data-block numbers |
+| 64 | v1: 48 direct data-block numbers; v2: 47 direct plus one indirect pointer |
 
 Directory membership is represented by the parent/name pair in each inode,
 scanned in inode order by readdir. There are no separate directory data blocks.
@@ -50,8 +55,14 @@ invalid. The host builder accepts ASCII names of at most 39 bytes and rejects
 symlinks. Absolute paths are limited to 255 bytes; lookup supports repeated `/`,
 `.` and `..`. Rename rejects ancestor cycles and an existing destination.
 
-Files have at most 48 blocks / 192 KiB. There are no indirect blocks, sparse
-files, hard links, permissions, symbolic links or journaling. Reads stop at EOF;
+Version 1 files have at most 48 blocks / 192 KiB. Version 2 files have at most
+1024 data blocks / 4 MiB: 47 direct references followed by references in one
+4096-byte indirect block (1024 little-endian u32 slots). Only the first 977
+indirect slots can be used; every unused slot must be zero. The indirect block
+itself is allocated only when the file exceeds 47 data blocks and consumes
+one additional bitmap entry. Mount rejects duplicate ownership across data and
+pointer blocks. There are no sparse files, hard links, permissions, symbolic
+links or journaling. Reads stop at EOF;
 seeks stay between zero and current size; writes may extend from EOF. New blocks
 are zero-filled. Allocation checks free capacity before changing metadata.
 Truncate and unlink release blocks; non-empty directories and open files cannot
@@ -71,20 +82,21 @@ the emulated RTC. A failed RTC sample returns zero. Access time is not recorded.
 ## Tooling and disk usage
 
 ```sh
-python3 tools/mkgathafs.py rootfs dist/gathaos-stage5-disk.img
-python3 tools/mkgathafs.py check dist/gathaos-stage5-disk.img
-python3 tools/mkgathafs.py read dist/gathaos-stage5-disk.img /Documents/Welcome.txt
+python3 tools/mkgathafs.py rootfs dist/example-v2.img
+python3 tools/mkgathafs.py rootfs dist/example-v1.img --v1
+python3 tools/mkgathafs.py check dist/example-v2.img
+python3 tools/mkgathafs.py read dist/example-v2.img /Documents/Welcome.txt
 python3 tools/test_gathafs.py
 ```
 
 The builder refuses to replace a different existing image. `make iso` supplies
-both an immutable stage seed and `dist/gathaos-disk.img`, created only if absent.
+both an immutable stage seed and `dist/gathaos-foundation-disk.img`, created only if absent.
 The latter is the writable runtime disk used by `make run`; existing user data
 is preserved across builds. Tests clone the seed into their evidence directories
 and never modify the runtime disk. Attach the disk as primary-master IDE:
 
 ```sh
-qemu-system-i386 -cdrom dist/gathaos-stage5-storage.iso -drive file=dist/gathaos-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -serial stdio -no-reboot
+qemu-system-i386 -cdrom dist/gathaos-stage9-foundation.iso -drive file=dist/gathaos-foundation-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -serial stdio
 ```
 
 The PIO driver polls with bounded waits, checks status/error bits, uses LBA28,

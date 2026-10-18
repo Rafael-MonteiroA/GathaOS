@@ -1,11 +1,14 @@
 #include "../common.h"
 static struct ui u;
-static char path[256]="/Documents/Untitled.txt",data[16384],status[80]="Ready";
-static struct ui_text filename={.data=path,.capacity=256},document={.data=data,.capacity=sizeof(data),.multiline=1,.focused=1};
+#define DOCUMENT_CAPACITY (256u*1024u)
+static char path[256]="/Documents/Untitled.txt",*data,status[80]="Ready";
+static struct ui_text filename={.data=path,.capacity=256},document={.capacity=DOCUMENT_CAPACITY,.multiline=1,.focused=1};
 static int dirty,dialog,action;
 static void load(void) {
-    int r=app_load(path,data,sizeof(data)-1);
-    if(r>=0){data[r]=0;document.cursor=document.anchor=document.scroll=0;dirty=0;}
+    char *pending=g_malloc(DOCUMENT_CAPACITY);
+    int r=pending?app_load(path,pending,DOCUMENT_CAPACITY-1):-12;
+    if(r>=0){pending[r]=0;g_free(data);data=pending;document.data=data;document.cursor=document.anchor=document.scroll=0;dirty=0;}
+    else g_free(pending);
     app_status(status,"Open",r);g_puts(r>=0?"EDITOR: opened\n":"EDITOR: open error\n");
 }
 static void save(void) {
@@ -13,6 +16,7 @@ static void save(void) {
     if(!r){dirty=0;g_puts("EDITOR: saved\n");}
 }
 int app_main(unsigned argument) {
+    data=g_calloc(DOCUMENT_CAPACITY,1);if(!data)return 1;document.data=data;
     (void)argument;char initial[256];app_argument(initial);if(*initial){g_copy(path,initial,256);load();}
     if(ui_open(&u,"Text Editor",620,440)<0)return 1;
     const char *menus[]={"New","Open","Save"};int first=1;

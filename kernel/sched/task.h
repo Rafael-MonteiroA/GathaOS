@@ -7,6 +7,7 @@ enum { TASK_EMPTY, TASK_READY, TASK_SLEEPING, TASK_DEAD };
 struct task {
     struct interrupt_frame *frame;
     uint32_t directory, stack_top, wake, pid, switches, cpu_ticks, argument;
+    uint32_t user_stack_top, heap_break;
     unsigned state, user, draws;
     void *stack;
     void (*function)(void);
@@ -22,6 +23,7 @@ const struct task *task_table(void);
 struct interrupt_frame *schedule(struct interrupt_frame *frame, int force);
 struct interrupt_frame *task_exit(struct interrupt_frame *frame, int code);
 void task_reap(void);
+int32_t task_sbrk(int32_t increment);
 uint32_t scheduler_preemptions(void);
 void tasks_demo_init(void);
 int tasks_demo_draw(unsigned frame);

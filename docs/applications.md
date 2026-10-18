@@ -3,7 +3,7 @@
 Start lists Terminal, Files, Text Editor, Calculator, Settings, System Monitor,
 Paint, About GathaOS and the earlier Widgets demo. Every launch creates a new
 ring-3 process with its own page directory. Each application is separately
-compiled and packed as GEX1. Built-in images are embedded in the kernel so an
+compiled and packed as GEX version 2 (GEX1 magic). Built-in images are embedded in the kernel so an
 older compatible data disk still works; a fresh release seed also contains their
 standalone executables under /System/Apps. Files can launch these disk GEXs.
 
@@ -14,7 +14,8 @@ help, reboot and shutdown. Paths can be absolute or relative to the shell's
 working directory. Commands accept up to three space-separated arguments;
 quoting, pipes, redirection, background jobs and scripting are not implemented.
 The terminal retains 80 lines and displays the latest fitting lines. Ctrl+L
-clears output. cp handles files up to GathaFS's 192 KiB limit. rm refuses open
+clears output. cp handles files up to the volume limit using dynamic memory
+and staged replacement (4 MiB on v2, 192 KiB on v1). cat retains its 192 KiB buffer. rm refuses open
 files and nonempty directories. reboot flushes the filesystem and requests an
 8042 reset; shutdown flushes and halts with a safe-to-close screen. This release
 uses that fallback and does not implement automatic ACPI hardware power-off.
@@ -30,7 +31,9 @@ The list scrolls using the scrollbar; there is no mouse wheel or double-click.
 
 ## Text Editor
 
-The path field is the file to Open or Save. Text is limited to 16,383 bytes.
+The path field is the file to Open or Save. Text is limited to 262,143 bytes in a dynamically allocated 256 KiB buffer.
+Open reads into a second buffer before replacing the text. Save stages the new
+file before releasing the old blocks, so capacity failures preserve the old file.
 The document supports insertion, Backspace/Delete, arrows, Home/End, Shift
 selection, Ctrl+A and vertical scrolling to the caret. Ctrl+S saves. New/Open
 prompt before discarding modified content. Closing currently exits immediately;

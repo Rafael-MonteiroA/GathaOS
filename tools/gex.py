@@ -15,7 +15,7 @@ def main():
         ['llvm-nm','--defined-only',str(elf)],text=True).splitlines() if len(parts := line.split()) == 3}
     data = raw.read_bytes(); base = 0x400000
     assert len(data) == symbols['__user_file_end'] - base
-    header = struct.pack('<8I',0x31584547,1,base,symbols['_start']-base,
+    header = struct.pack('<8I',0x31584547,2,base,symbols['_start']-base,
                          symbols['__user_rx_end']-base,len(data),symbols['__user_mem_end']-base,checksum(data))
     output.write_bytes(header+data)
     if len(sys.argv) > 4:

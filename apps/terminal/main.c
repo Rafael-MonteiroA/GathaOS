@@ -11,6 +11,14 @@ static void print(const char *s) {
     }while(*s);
 }
 static void result(const char *verb,int r){char status[80];app_status(status,verb,r);print(status);}
+static int copy_file(const char *source,const char *destination) {
+    struct g_stat info;int r=g_stat(source,&info);if(r<0)return r;
+    if(info.type!=G_FILE)return -21;
+    void *data=g_malloc(info.size?info.size:1);if(!data)return -12;
+    r=app_load(source,data,info.size);
+    if(r>=0)r=app_save(destination,data,(unsigned)r);
+    g_free(data);return r;
+}
 static void execute(void) {
     print(command);char *args[4]={0};unsigned argc=0;char *p=command;
     while(*p && argc<4){while(*p==' ')++p;if(!*p)break;args[argc++]=p;while(*p && *p!=' ')++p;if(*p)*p++=0;}
@@ -26,7 +34,7 @@ static void execute(void) {
     else if(!g_strcmp(cmd,"mkdir"))result("mkdir",*a?g_mkdir(path):-22);
     else if(!g_strcmp(cmd,"rm"))result("rm",*a?g_unlink(path):-22);
     else if(!g_strcmp(cmd,"mv"))result("mv",*a && *b?g_rename(path,other):-22);
-    else if(!g_strcmp(cmd,"cp")){int n=*a && *b?app_load(path,transfer,sizeof(transfer)):-22;result("cp",n<0?n:app_save(other,transfer,(unsigned)n));}
+    else if(!g_strcmp(cmd,"cp"))result("cp",*a && *b?copy_file(path,other):-22);
     else if(!g_strcmp(cmd,"ps")){struct g_process ps[16];unsigned n=app_processes(ps,16);for(unsigned i=0;i<n;++i){char row[80];char *end=g_decimal(row,(int)ps[i].pid);*end++=' ';g_copy(end,ps[i].name,50);print(row);}}
     else if(!g_strcmp(cmd,"mem") || !g_strcmp(cmd,"uptime")){struct g_info info;ui_info(&info);char row[80];g_decimal(row,(int)(cmd[0]=='m'?info.free_frames*4:info.ticks/100));g_copy(row+g_strlen(row),cmd[0]=='m'?" KiB free":" seconds since boot",40);print(row);}
     else if(!g_strcmp(cmd,"shutdown") || !g_strcmp(cmd,"reboot")){g_puts("SHELL: power request\n");g_call(SYS_POWER,cmd[0]=='r',0,0,0,0);}

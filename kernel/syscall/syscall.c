@@ -40,6 +40,10 @@ static int file_call(struct interrupt_frame *f) {
     }
     int result = path_copy(f->ebx,path); if (result < 0) return result;
     switch (f->eax) {
+    case SYS_SAVE:
+        if (f->edx > fs_max_size()) return -27;
+        if (!user_range(f->ecx,f->edx,0)) return -14;
+        return fs_replace(path,(const void *)(uintptr_t)f->ecx,f->edx);
     case SYS_OPEN: return vfs_open(t->files,path,f->ecx);
     case SYS_MKDIR: result = fs_create(path,G_DIR); return result < 0 ? result : 0;
     case SYS_UNLINK: return fs_unlink(path);
@@ -56,10 +60,11 @@ static int file_call(struct interrupt_frame *f) {
 }
 struct interrupt_frame *syscall_dispatch(struct interrupt_frame *f) {
     struct task *t = task_current();
-    if (f->eax >= SYS_OPEN && f->eax <= SYS_SYNC) { f->eax = (uint32_t)file_call(f); return f; }
+    if ((f->eax >= SYS_OPEN && f->eax <= SYS_SYNC) || f->eax == SYS_SAVE) { f->eax = (uint32_t)file_call(f); return f; }
     if(f->eax==SYS_POWER){f->eax=(uint32_t)system_power(f->ebx);return f;}
     if (f->eax >= SYS_WINDOW && f->eax <= SYS_BITMAP) { f->eax=(uint32_t)wm_call(f); return f; }
     switch (f->eax) {
+    case SYS_SBRK: f->eax = (uint32_t)task_sbrk((int32_t)f->ebx); break;
     case SYS_TICKS: f->eax = pit_ticks(); break;
     case SYS_PID: f->eax = t->pid; break;
     case SYS_YIELD: f->eax = 0; return schedule(f,1);

@@ -28,9 +28,10 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage8-release$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage8-release-page.iso
-DISK ?= dist/gathaos-stage8-disk.img
+ISO ?= dist/gathaos-stage9-foundation$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage9-foundation-page.iso
+DISK ?= dist/gathaos-stage9-disk.img
+RUNTIME_DISK ?= dist/gathaos-foundation-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -48,6 +49,12 @@ OBJECTS += $(BUILD)/demo-gex.o $(BUILD)/widgets-gex.o
 OBJECTS += $(BUILD)/gui/wm/wm.o $(BUILD)/gui/wm/launcher.o
 .PHONY: all iso run test test-boot clean
 all: iso
+$(addprefix $(BUILD)/,$(addsuffix .elf,$(APPS) demo widgets foundation)): $(BUILD)/libgatha/alloc.o
+$(BUILD)/foundation.elf: $(BUILD)/user-start.o $(BUILD)/apps/foundation/main.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/foundation.gex: $(BUILD)/foundation.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/foundation.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/foundation.bin $@
 $(BUILD)/user-start.o: libgatha/start.asm | $(BUILD)
 	$(NASM) -Wall -Werror -f elf32 $< -o $@
 $(BUILD)/demo-user.o: apps/demo/main.c libgatha/api.h | $(BUILD)
@@ -122,18 +129,20 @@ $(BUILD)/about.gex: $(BUILD)/about.elf tools/gex.py
 	$(PYTHON) tools/gex.py $< $(BUILD)/about.bin $@ about_gex
 $(BUILD)/about-gex.o: $(BUILD)/about.gex
 	$(CC) $(CFLAGS) -c $(BUILD)/about.c -o $@
-iso: $(ISO) $(DISK) dist/gathaos-disk.img
+iso: $(ISO) $(DISK) $(RUNTIME_DISK)
 ifeq ($(ISO),dist/gathaos-stage8-release.iso)
 iso: dist/gathaos-1.0-rc1.iso
 dist/gathaos-1.0-rc1.iso: $(ISO)
 	if test -e "$@"; then cmp "$<" "$@"; else cp "$<" "$@"; fi
 endif
-$(DISK): tools/mkgathafs.py $(shell find rootfs -type f) $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS)))
+$(DISK): tools/mkgathafs.py $(shell find rootfs -type f) $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/foundation.gex
 	mkdir -p $(BUILD)/rootfs/System/Apps
 	cp -a rootfs/. $(BUILD)/rootfs/
 	cp $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/rootfs/System/Apps/
+	mkdir -p $(BUILD)/rootfs/System/Tests
+	cp $(BUILD)/foundation.gex $(BUILD)/rootfs/System/Tests/
 	$(PYTHON) tools/mkgathafs.py $(BUILD)/rootfs "$@"
-dist/gathaos-disk.img: $(DISK)
+$(RUNTIME_DISK): $(DISK)
 	test -e "$@" || cp "$(DISK)" "$@"
 $(BUILD):
 	mkdir -p $@
@@ -159,19 +168,23 @@ $(BUILD)/boot.img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin t
 $(ISO): $(BUILD)/boot.img scripts/make-iso.sh
 	bash scripts/make-iso.sh $(BUILD)/boot.img "$@" $(BUILD)
 run: iso
-	QEMU="$(QEMU)" bash scripts/run-qemu.sh "$(ISO)" dist/gathaos-disk.img
+	QEMU="$(QEMU)" bash scripts/run-qemu.sh "$(ISO)" "$(RUNTIME_DISK)"
 test-boot: iso
 	QEMU="$(QEMU)" PS2_SET=$(PS2_SET) DISK="$(DISK)" bash scripts/smoke-test.sh "$(ISO)" $(DEBUG_FAULT) $(BUILD)/kernel.elf $(RAM)
 test: test-boot
 	$(PYTHON) tools/test_gathafs.py
+	clang -std=c11 -Wall -Wextra -Werror -I. -Ikernel tools/fs_native_test.c kernel/fs/gathafs.c libgatha/string.c -o build/fs-native-test
+	build/fs-native-test "$(DISK)"
+	$(PYTHON) tools/mkgathafs.py check build/native-full-disk.img
 ifeq ($(DEBUG_FAULT),none)
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage8-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage9-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage8-release-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage8-release-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage8-release-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage9-foundation-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage9-foundation-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage9-foundation-gp.iso test-boot
+	$(PYTHON) tools/foundation_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/power_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/soak_test.py "$(ISO)" "$(DISK)"
 endif

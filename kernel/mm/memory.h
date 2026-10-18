@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "boot.h"
+#include "../libgatha/layout.h"
 #define PAGE_SIZE UINT32_C(4096)
 #define KERNEL_BASE UINT32_C(0xc0000000)
 #define PHYSICAL_LIMIT UINT32_C(0x20000000)
@@ -37,6 +38,7 @@ void memory_self_test(void);
 uint32_t paging_kernel_directory(void);
 uint32_t paging_user_create(void);
 int paging_user_map(uint32_t directory, uint32_t address, uint32_t frame, int writable);
+void paging_user_unmap(uint32_t directory, uint32_t address);
 void paging_user_destroy(uint32_t directory);
 int user_range(uint32_t address, uint32_t size, int writable);
 #endif

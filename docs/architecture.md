@@ -1,4 +1,4 @@
-# Architecture — GathaOS 1.0 RC1
+# Architecture - GathaOS foundation expansion
 
 The host toolchain produces an original NASM/C guest with no imported OS runtime.
 
@@ -34,6 +34,8 @@ faults produce a diagnostic panic screen. Dead tasks are reaped on another stack
 
 The PMM manages usable E820 pages below 512 MiB. The heap grows from 64 KiB to
 at most 16 MiB, splitting/coalescing allocations and returning trailing pages.
+User heaps are separate and bounded to 128 MiB per process; GEX v2 images can
+use 16 MiB. See foundation.md for compatibility and failure behavior.
 Interrupt-gate syscalls validate all user pointers and execute with IRQs disabled.
 This is a small uniprocessor design, without SMP or floating-point context.
 
@@ -53,7 +55,7 @@ GathaFS, pass document paths, or select Editor/Paint by extension. Closing a
 window/process releases its pixel buffers, kernel stack, address space and FDs.
 
 ATA uses polling PIO; GathaFS stores a bitmap, fixed inode table and direct block
-references. Operations validate bounds and metadata. Sync flushes the disk cache,
+references, plus one indirect block per large file on v2 volumes. Operations validate bounds and metadata. Sync flushes the disk cache,
 but there is no journal or power-loss atomicity. The shutdown syscall syncs then
 halts with a visible safe-to-close screen. Reboot uses the 8042 reset command.
 This fallback is intentional and does not claim ACPI hardware power-off.

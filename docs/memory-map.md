@@ -1,4 +1,4 @@
-# Memory map - GathaOS 1.0 RC1
+# Memory map - GathaOS foundation expansion
 
 ## Physical layout
 
@@ -33,8 +33,10 @@ The actual reserved end is printed on serial and saved in the ELF map.
 
 | Range | Mapping |
 |---|---|
-| 0x00400000–0x006fffff | Private user executable/data/BSS in task directories |
-| 0x007f0000–0x007fffff | Private user stack; lower guard space unmapped |
+| 0x00400000–0x013fffff | GEX v2 image, at most 16 MiB; v1 ends at 0x006fffff |
+| 0x007f0000–0x007fffff | GEX v1 stack only |
+| 0x03ff0000–0x03ffffff | GEX v2 stack, 64 KiB, lower guard unmapped |
+| 0x04000000–0x0bffffff | Per-process heap; only committed pages mapped |
 | Other low addresses below 0xc0000000 | Unmapped; no identity map remains |
 | 0xc0000000–0xc0000fff | Unmapped high alias of physical page zero |
 | 0xc0001000–0xdfffffff | Direct map of physical addresses 0x1000–0x1fffffff |

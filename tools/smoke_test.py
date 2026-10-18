@@ -248,7 +248,7 @@ def main():
                         raise RuntimeError("Missing CPU addresses")
                     addresses = [int(eip[1],16),int(esp[1],16)]
                     if not (min(addresses) >= 0xC0000000 or
-                            (fault == 'none' and all(0x400000 <= v <= 0x800000 for v in addresses) and
+                            (fault == 'none' and all(0x400000 <= v <= 0xc000000 for v in addresses) and
                              re.search(r'CS\s*=001b',registers))):
                         raise RuntimeError("CPU is outside expected kernel/user address spaces")
                     if fault != "none":

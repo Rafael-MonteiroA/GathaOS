@@ -1,4 +1,4 @@
-# Gatha Executable, GEX1
+# Gatha Executable, GEX versions 1 and 2
 
 GEX is an original fixed-address flat executable format, not an ELF runtime
 loader. Build tooling links a temporary ELF and packs its binary segments.
@@ -7,12 +7,12 @@ All eight header words are unsigned little-endian 32-bit values:
 | Offset | Value |
 |---:|---|
 | 0 | Magic 0x31584547 (`GEX1`) |
-| 4 | Version 1 |
+| 4 | Version 1 (legacy) or 2 (new builds) |
 | 8 | Load base 0x00400000 |
 | 12 | Entry offset, below RX end |
 | 16 | RX bytes, nonzero multiple of 4096 |
 | 20 | File payload bytes, excluding the 32-byte header |
-| 24 | Memory bytes, page-aligned, at most 3 MiB |
+| 24 | Memory bytes, page-aligned; v1 at most 3 MiB, v2 at most 16 MiB |
 | 28 | FNV-1a 32-bit payload checksum |
 
 The payload follows immediately. The RX portion contains code/read-only data;
@@ -23,7 +23,9 @@ There is no dynamic linker, relocation processing, compression or signatures.
 Non-PAE paging has no NX, so writable data is also executable on this target.
 
 Each process has private pages at the same virtual addresses, with a 64 KiB user
-stack at 0x007f0000..0x007fffff and unmapped space below the stack. The entry gets
+stack at 0x007f0000..0x007fffff for v1, or 0x03ff0000..0x03ffffff for v2,
+with unmapped space below the stack. Both versions can use the new bounded
+heap at 0x04000000..0x0bffffff; see foundation.md for allocation semantics. The entry gets
 an application argument in EAX. `libgatha/start.asm` invokes `app_main(argument)`
 and turns its return value into `exit`. Applications use original freestanding
 memory/string routines and inline syscall wrappers. Release applications are

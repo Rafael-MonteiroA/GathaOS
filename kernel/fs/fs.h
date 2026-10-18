@@ -5,7 +5,10 @@
 #define FS_BLOCK 4096u
 #define FS_INODES 128u
 #define FS_DIRECT 48u
-#define FS_MAX_SIZE (FS_DIRECT * FS_BLOCK)
+#define FS_V2_DIRECT 47u
+#define FS_INDIRECT (FS_BLOCK / 4u)
+#define FS_MAX_BLOCKS 1024u
+#define FS_MAX_SIZE (FS_MAX_BLOCKS * FS_BLOCK)
 struct fs_inode { uint32_t used,type,parent,size,created,modified; char name[40]; uint32_t blocks[FS_DIRECT]; };
 _Static_assert(sizeof(struct fs_inode) == 256,"GathaFS inode");
 struct vfs_fd { unsigned used,inode,offset,flags; };
@@ -19,9 +22,11 @@ int fs_stat(const char *path, struct g_stat *out);
 int fs_readdir(const char *path, unsigned index, struct g_dirent *out);
 int fs_read(unsigned inode, unsigned offset, void *data, unsigned size);
 int fs_write(unsigned inode, unsigned offset, const void *data, unsigned size);
+int fs_replace(const char *path, const void *data, unsigned size);
 int fs_truncate(unsigned inode);
 const struct fs_inode *fs_node(unsigned inode);
 unsigned fs_free_blocks(void);
+unsigned fs_max_size(void);
 void fs_self_test(void);
 int vfs_open(struct vfs_fd *fds, const char *path, unsigned flags);
 int vfs_close(struct vfs_fd *fds, unsigned fd);
