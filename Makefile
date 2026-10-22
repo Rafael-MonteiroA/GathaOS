@@ -28,10 +28,10 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage9-foundation$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage9-foundation-page.iso
-DISK ?= dist/gathaos-stage9-disk.img
-RUNTIME_DISK ?= dist/gathaos-foundation-disk.img
+ISO ?= dist/gathaos-stage10-network$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage10-network-page.iso
+DISK ?= dist/gathaos-stage10-disk.img
+RUNTIME_DISK ?= dist/gathaos-network-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -43,6 +43,7 @@ SOURCES += kernel/drivers/framebuffer.c kernel/drivers/ps2.c kernel/drivers/keyb
 SOURCES += kernel/sched/task.c kernel/sched/demo.c kernel/syscall/syscall.c libgatha/string.c
 SOURCES += kernel/drivers/ata.c kernel/drivers/rtc.c kernel/fs/gathafs.c kernel/fs/vfs.c kernel/fs/selftest.c
 OBJECTS := $(BUILD)/entry.o $(BUILD)/interrupts.o $(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
+OBJECTS += $(BUILD)/kernel/drivers/pcnet.o $(addprefix $(BUILD)/kernel/net/,ethernet.o dhcp.o dns.o tcp.o syscall.o)
 APPS := terminal files editor calculator settings sysmon paint about
 OBJECTS += $(BUILD)/kernel/power.o $(addprefix $(BUILD)/,$(addsuffix -gex.o,$(APPS)))
 OBJECTS += $(BUILD)/demo-gex.o $(BUILD)/widgets-gex.o
@@ -50,6 +51,12 @@ OBJECTS += $(BUILD)/gui/wm/wm.o $(BUILD)/gui/wm/launcher.o
 .PHONY: all iso run test test-boot clean
 all: iso
 $(addprefix $(BUILD)/,$(addsuffix .elf,$(APPS) demo widgets foundation)): $(BUILD)/libgatha/alloc.o
+$(BUILD)/terminal.elf: $(BUILD)/libgatha/network.o
+$(BUILD)/network.elf: $(BUILD)/user-start.o $(BUILD)/apps/network/main.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/network.gex: $(BUILD)/network.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/network.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/network.bin $@
 $(BUILD)/foundation.elf: $(BUILD)/user-start.o $(BUILD)/apps/foundation/main.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o libgatha/user.ld
 	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
 $(BUILD)/foundation.gex: $(BUILD)/foundation.elf tools/gex.py
@@ -135,12 +142,13 @@ iso: dist/gathaos-1.0-rc1.iso
 dist/gathaos-1.0-rc1.iso: $(ISO)
 	if test -e "$@"; then cmp "$<" "$@"; else cp "$<" "$@"; fi
 endif
-$(DISK): tools/mkgathafs.py $(shell find rootfs -type f) $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/foundation.gex
+$(DISK): tools/mkgathafs.py $(shell find rootfs -type f) $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/foundation.gex $(BUILD)/network.gex
 	mkdir -p $(BUILD)/rootfs/System/Apps
 	cp -a rootfs/. $(BUILD)/rootfs/
 	cp $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/rootfs/System/Apps/
 	mkdir -p $(BUILD)/rootfs/System/Tests
 	cp $(BUILD)/foundation.gex $(BUILD)/rootfs/System/Tests/
+	cp $(BUILD)/network.gex $(BUILD)/rootfs/System/Tests/
 	$(PYTHON) tools/mkgathafs.py $(BUILD)/rootfs "$@"
 $(RUNTIME_DISK): $(DISK)
 	test -e "$@" || cp "$(DISK)" "$@"
@@ -179,15 +187,17 @@ test: test-boot
 ifeq ($(DEBUG_FAULT),none)
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage9-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage10-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage9-foundation-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage9-foundation-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage9-foundation-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage10-network-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage10-network-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage10-network-gp.iso test-boot
 	$(PYTHON) tools/foundation_test.py "$(ISO)" "$(DISK)"
+	$(PYTHON) tools/network_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/power_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/soak_test.py "$(ISO)" "$(DISK)"
 endif
 clean:
 	rm -rf build
 -include $(OBJECTS:.o=.d)
+-include $(BUILD)/libgatha/network.d $(BUILD)/apps/network/main.d

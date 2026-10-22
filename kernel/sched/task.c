@@ -1,4 +1,5 @@
 #include "task.h"
+#include "net/network.h"
 #include "../gui/wm/wm.h"
 #include "mm/memory.h"
 #include "arch/x86/io.h"
@@ -141,6 +142,7 @@ void task_reap(void) {
     uint32_t flags = irq_save();
     for (unsigned i = 1; i < TASK_MAX; ++i) if (i != current && tasks[i].state == TASK_DEAD) {
         wm_release(tasks[i].pid);
+        network_release(tasks[i].pid);
         vfs_close_all(tasks[i].files);
         paging_user_destroy(tasks[i].directory); kfree(tasks[i].stack); memset(&tasks[i],0,sizeof(tasks[i]));
     }

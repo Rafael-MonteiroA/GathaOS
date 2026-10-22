@@ -304,12 +304,14 @@ void wm_init(const struct boot_info *boot) {
     width=(int)boot->width; height=(int)boot->height; mx=width/2; my=height/2;
     damage(0,0,width,height); render(); klog("WM: compositor buffers damage queue ready\r\n");
 }
+extern void network_poll(void);
 void wm_run(void) {
     (void)desktop_launch(APP_ABOUT);
     klog("STAGE7: READY\r\nSTAGE8: READY\r\n"); unsigned next=100,clock=0;
     extern void tasks_demo_report(void);
     for (;;) {
         unsigned now=pit_ticks(); uint32_t flags=irq_save(); struct input_event e;
+        network_poll();
         while (input_poll(&e,now)) handle(&e);
         if (now-clock>=100) { clock=now; damage(width-70,height-42,70,42); }
         render(); irq_restore(flags); task_reap();

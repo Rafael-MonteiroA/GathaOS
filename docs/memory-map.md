@@ -64,3 +64,9 @@ PAE or NX.
 Stage 3 allocates a width * height * 4 RGB back buffer from the heap after memory
 tests complete (3 MiB at 1024x768). The front buffer remains in the VBE window.
 The input ring, text cells and cursor save area use static kernel BSS.
+
+Stage 10 reserves aligned PCnet DMA descriptors and packet buffers in kernel BSS,
+below the linker-enforced 4 MiB bootstrap boundary. The DMA address is the pinned
+physical address, not a virtual pointer. TCP/DNS state and bounded receive rings
+also reside in supervisor-only BSS. HTTP response buffers are per-process heap
+allocations and are never exposed directly to the NIC.

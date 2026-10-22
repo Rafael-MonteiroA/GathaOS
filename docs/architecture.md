@@ -60,6 +60,16 @@ but there is no journal or power-loss atomicity. The shutdown syscall syncs then
 halts with a visible safe-to-close screen. Reboot uses the 8042 reset command.
 This fallback is intentional and does not claim ACPI hardware power-off.
 
+## Network expansion
+
+An original PCI/PCnet driver and bounded ARP/IPv4/UDP/DHCP/DNS/TCP client stack
+are polled from the compositor loop. Network syscalls validate user buffers and
+return immediately; user-mode helpers yield while waiting. Terminal implements
+status/name lookup and HTTP downloads, saving only complete responses. Exit or
+fault releases process-owned sockets and DNS queries. Networking is optional;
+absence of a supported adapter leaves the desktop operational. See network.md
+for execution, ABI, resource bounds, protocol restrictions and verification.
+
 ## Verification boundary
 
 QEMU TCG standard VGA/IDE/PS2 is the automated target. Tests use private copies of

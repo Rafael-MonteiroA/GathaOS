@@ -13,6 +13,7 @@
 #include "../gui/gfx/gfx.h"
 #include "../gui/wm/wm.h"
 #include "sched/task.h"
+#include "net/network.h"
 static struct boot_info boot_state;
 #if DEBUG_FAULT != 0
 static uint32_t pixel_color(const struct boot_info *b, uint32_t rgb) {
@@ -101,6 +102,7 @@ void kernel_main(const struct boot_info *b) {
     klog("STAGE2: TIMER RUNNING\r\n");
 #if DEBUG_FAULT == 0
     ps2_init(b->width, b->height);
+    network_init();
     tasks_demo_init();
     wm_run();
 #endif

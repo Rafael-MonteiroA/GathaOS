@@ -27,6 +27,7 @@ the kernel is preempted between syscalls, not in their critical sections.
 | 17 | sync | — | 0 after ATA cache flush |
 | 29 | sbrk | signed byte increment | previous break, or -12 |
 | 30 | save | path, readable buffer, bytes | 0 after staged replacement/flush |
+| 31 | network | operation, user buffer, bytes, handle | nonblocking result; see network.md |
 
 Open flags: READ=1, WRITE=2, CREATE=4, TRUNC=8 (TRUNC requires WRITE). Paths are
 absolute, NUL-terminated and limited to 255 bytes. Seek cannot create holes.

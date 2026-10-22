@@ -23,6 +23,16 @@ void app_status(char *to,const char *action,int result) {
     g_copy(to,action,80);unsigned n=(unsigned)g_strlen(to);
     const char *message=0;
     switch(result) {
+    case -2:message=": Name or file not found";break;
+    case -71:message=": Invalid or unsuccessful HTTP response";break;
+    case -90:message=": Network message exceeds supported limits";break;
+    case -95:message=": Unsupported protocol (HTTP only, no HTTPS yet)";break;
+    case -100:message=": Network offline or waiting for DHCP";break;
+    case -104:message=": Connection reset";break;
+    case -110:message=": Connection timed out";break;
+    case -111:message=": Connection refused";break;
+    case -113:message=": Host or DNS unavailable";break;
+    case -125:message=": Cancelled";break;
     case -5:message=": Disk I/O error";break;
     case -12:message=": Not enough memory";break;
     case -16:message=": File is in use";break;

@@ -6,7 +6,7 @@ sequence was: (1) larger applications/files and better failure handling,
 modern web compatibility. On 2026-10-16 the user asked to start step 1, and on
 2026-10-17 asked to continue it.
 
-This authorizes step 1 only. Its repository release number is **Stage 9:
+That authorization covered step 1. Its repository release number is **Stage 9:
 foundation**, preserving the original completed Stages 0-8 and their artifacts.
 AGENTS.md's clean-build, real-boot, evidence, report and commit workflow still
 applies. Network code and the next expansion step are not part of this stage.
@@ -21,6 +21,14 @@ applies. Network code and the next expansion step are not part of this stage.
 - A 256 KiB editor buffer and larger terminal copies using dynamic allocation.
 - Tests for capacity, corruption, allocation failure, process faults, persistence
   and the existing full desktop regression/soak suite.
+
+On 2026-10-19 the user asked to continue after the completed foundation release.
+This authorizes step 2, **Stage 10: network**: an original PCnet PCI driver,
+ARP/IPv4/UDP, DHCP, DNS and a bounded client TCP implementation, with Terminal
+network status, name lookup and HTTP downloads. This explicit expansion replaces
+the original no-network scope for this stage. HTTPS, a browser and importing
+third-party guest code are not authorized by this step. The stage workflow stays
+in effect, including real boot verification and immutable earlier releases.
 
 Future stages need separate approval. A modern browser is a substantial project;
 no browser-engine import or relaxation of the original guest-code rules is

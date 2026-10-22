@@ -20,6 +20,13 @@ files and nonempty directories. reboot flushes the filesystem and requests an
 8042 reset; shutdown flushes and halts with a safe-to-close screen. This release
 uses that fallback and does not implement automatic ACPI hardware power-off.
 
+Stage 10 adds `net`, `nslookup domain` and `wget http://host/path destination`.
+Network waits yield to other applications and accept Escape cancellation. Close
+also cancels, and task cleanup releases all sockets/queries. Downloads buffer up
+to 4 MiB before staged saving; failed transfers preserve the destination. HTML is
+downloaded as a file, without rendering. See network.md for protocol limits and
+configuration. HTTPS and a browser are later roadmap steps.
+
 ## Files
 
 Enter an absolute folder in the location field and press Go. Select entries,
