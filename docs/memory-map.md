@@ -70,3 +70,10 @@ below the linker-enforced 4 MiB bootstrap boundary. The DMA address is the pinne
 physical address, not a virtual pointer. TCP/DNS state and bounded receive rings
 also reside in supervisor-only BSS. HTTP response buffers are per-process heap
 allocations and are never exposed directly to the NIC.
+
+Stage 11 TLS state is a roughly 100 KiB per-connection user-heap allocation,
+including bounded record and handshake buffers. It is explicitly wiped on normal
+cleanup and reclaimed with the task after exit/fault. The user stack remains
+64 KiB; handshake/certificate byte buffers are not large stack allocations.
+Public trust anchors are read-only program data. The kernel retains only entropy
+health counters and uses bounded temporary buffers for syscall 32.

@@ -70,6 +70,13 @@ fault releases process-owned sockets and DNS queries. Networking is optional;
 absence of a supported adapter leaves the desktop operational. See network.md
 for execution, ABI, resource bounds, protocol restrictions and verification.
 
+Stage 11 adds TLS 1.2 and certificate verification entirely in user mode, using
+the same TCP API. Original crypto code is shared by Terminal and its diagnostic;
+only SHA-256 entropy conditioning runs in the kernel. Syscall 32 exposes bounded
+RDRAND output and validated UTC RTC readings. Public roots are compiled into the
+application; a disk file cannot change Terminal's trust store. See https.md for
+the exact algorithms, bounds and security-policy limitations.
+
 ## Verification boundary
 
 QEMU TCG standard VGA/IDE/PS2 is the automated target. Tests use private copies of

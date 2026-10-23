@@ -9,6 +9,12 @@ standalone executables under /System/Apps. Files can launch these disk GEXs.
 
 ## Terminal / GathaShell
 
+Stage 11 adds `wget https://host/path destination` with authenticated TLS 1.2;
+HTTP, `net` and `nslookup` remain supported. See https.md for the bounded crypto,
+trust and certificate profile. Escape or closing Terminal cancels an in-flight
+TLS operation; a failed download preserves the existing destination. This is a
+file downloader, with no page rendering or browser engine.
+
 The shell supports ls, cd, cat, mkdir, rm, cp, mv, echo, clear, ps, mem, uptime,
 help, reboot and shutdown. Paths can be absolute or relative to the shell's
 working directory. Commands accept up to three space-separated arguments;

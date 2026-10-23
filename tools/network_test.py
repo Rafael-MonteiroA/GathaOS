@@ -129,14 +129,14 @@ def nat(iso,seed):
             for route in ['short','conflict','duplicate','badchunk','missing','oversize','gzip']:
                 output=g.command_line(f'wget {prefix}/{route} /Documents/length.bin')
                 assert 'SHELL OUT: wget:' in output and 'wget OK' not in output,output
-            g.command_line('wget https://example.com/ /Documents/length.bin','Unsupported protocol')
+            g.command_line('wget ftp://example.com/ /Documents/length.bin','Unsupported protocol')
             g.command_line('wget http://10.0.2.2:1/ /Documents/length.bin','Connection refused')
             before=len(g.d.log());g.d.type(f'wget {prefix}/slow /Documents/length.bin\n');time.sleep(.7);g.d.tap('esc')
             g.wait(lambda s:'SHELL OUT: wget: Cancelled' in s[before:]);print('NETWORK cancellation PASS',flush=True)
             g.command_line(f'wget {prefix}/length /Documents/again.bin','SHELL OUT: wget OK');files['/Documents/again.bin']=PAYLOAD
-            assert all(headers.get('User-Agent')=='GathaOS/10' for _,headers in HTTP.seen)
+            assert all(headers.get('User-Agent')=='GathaOS/11' for _,headers in HTTP.seen)
             g.finish(['DHCP NAT','ARP','TCP checksums/flow control','HTTP content-length/chunks/close/empty','1 MiB binary download',
-                      'malformed/truncated/oversized/unsupported responses preserve destination','HTTPS rejection','refused connection',
+                      'malformed/truncated/oversized/unsupported responses preserve destination','unsupported scheme rejection','refused connection',
                       'Escape cancellation','repeated connections','process memory reclamation','independent disk bytes'],files)
     finally:server.shutdown();server.server_close()
 

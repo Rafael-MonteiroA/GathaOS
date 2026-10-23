@@ -1,5 +1,9 @@
 # Stage 10 networking
 
+Stage 11 extends the user-mode downloader with HTTPS; see [https.md](https.md).
+The transport description below documents the Stage 10 implementation. Its
+HTTP-only statements describe that release, not the current Terminal.
+
 This is an original, bounded IPv4 client stack for a virtual Ethernet adapter.
 All guest code is freestanding C. QEMU's NAT and the host test servers are tools,
 not code incorporated into GathaOS. The desktop still boots without a NIC.

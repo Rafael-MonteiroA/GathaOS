@@ -28,10 +28,10 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage10-network$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage10-network-page.iso
-DISK ?= dist/gathaos-stage10-disk.img
-RUNTIME_DISK ?= dist/gathaos-network-disk.img
+ISO ?= dist/gathaos-stage11-https$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage11-https-page.iso
+DISK ?= dist/gathaos-stage11-disk.img
+RUNTIME_DISK ?= dist/gathaos-https-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -44,6 +44,9 @@ SOURCES += kernel/sched/task.c kernel/sched/demo.c kernel/syscall/syscall.c libg
 SOURCES += kernel/drivers/ata.c kernel/drivers/rtc.c kernel/fs/gathafs.c kernel/fs/vfs.c kernel/fs/selftest.c
 OBJECTS := $(BUILD)/entry.o $(BUILD)/interrupts.o $(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
 OBJECTS += $(BUILD)/kernel/drivers/pcnet.o $(addprefix $(BUILD)/kernel/net/,ethernet.o dhcp.o dns.o tcp.o syscall.o)
+OBJECTS += $(BUILD)/kernel/drivers/security.o $(BUILD)/libgatha/crypto/sha256.o
+CRYPTO := $(addprefix $(BUILD)/libgatha/crypto/,sha256.o sha512.o aes_gcm.o x25519.o rsa.o)
+TLS := $(BUILD)/libgatha/tls/tls.o $(BUILD)/libgatha/tls/x509.o $(CRYPTO)
 APPS := terminal files editor calculator settings sysmon paint about
 OBJECTS += $(BUILD)/kernel/power.o $(addprefix $(BUILD)/,$(addsuffix -gex.o,$(APPS)))
 OBJECTS += $(BUILD)/demo-gex.o $(BUILD)/widgets-gex.o
@@ -51,7 +54,16 @@ OBJECTS += $(BUILD)/gui/wm/wm.o $(BUILD)/gui/wm/launcher.o
 .PHONY: all iso run test test-boot clean
 all: iso
 $(addprefix $(BUILD)/,$(addsuffix .elf,$(APPS) demo widgets foundation)): $(BUILD)/libgatha/alloc.o
-$(BUILD)/terminal.elf: $(BUILD)/libgatha/network.o
+$(BUILD)/terminal.elf: $(BUILD)/libgatha/network.o $(TLS)
+$(BUILD)/tlscheck.elf: $(BUILD)/user-start.o $(BUILD)/apps/tlscheck/main.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/alloc.o $(TLS) libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/tlscheck.gex: $(BUILD)/tlscheck.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/tlscheck.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/tlscheck.bin $@
+$(BUILD)/libgatha/tls/tls.o: $(BUILD)/trust-roots.h
+$(BUILD)/libgatha/tls/tls.o: CFLAGS += -I$(BUILD)
+$(BUILD)/trust-roots.h: tools/embed_roots.py $(wildcard certs/*)
+	$(PYTHON) tools/embed_roots.py $@
 $(BUILD)/network.elf: $(BUILD)/user-start.o $(BUILD)/apps/network/main.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o libgatha/user.ld
 	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
 $(BUILD)/network.gex: $(BUILD)/network.elf tools/gex.py
@@ -142,13 +154,14 @@ iso: dist/gathaos-1.0-rc1.iso
 dist/gathaos-1.0-rc1.iso: $(ISO)
 	if test -e "$@"; then cmp "$<" "$@"; else cp "$<" "$@"; fi
 endif
-$(DISK): tools/mkgathafs.py $(shell find rootfs -type f) $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/foundation.gex $(BUILD)/network.gex
+$(DISK): tools/mkgathafs.py $(shell find rootfs -type f) $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/foundation.gex $(BUILD)/network.gex $(BUILD)/tlscheck.gex
 	mkdir -p $(BUILD)/rootfs/System/Apps
 	cp -a rootfs/. $(BUILD)/rootfs/
 	cp $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/rootfs/System/Apps/
 	mkdir -p $(BUILD)/rootfs/System/Tests
 	cp $(BUILD)/foundation.gex $(BUILD)/rootfs/System/Tests/
 	cp $(BUILD)/network.gex $(BUILD)/rootfs/System/Tests/
+	cp $(BUILD)/tlscheck.gex $(BUILD)/rootfs/System/Tests/
 	$(PYTHON) tools/mkgathafs.py $(BUILD)/rootfs "$@"
 $(RUNTIME_DISK): $(DISK)
 	test -e "$@" || cp "$(DISK)" "$@"
@@ -180,6 +193,8 @@ run: iso
 test-boot: iso
 	QEMU="$(QEMU)" PS2_SET=$(PS2_SET) DISK="$(DISK)" bash scripts/smoke-test.sh "$(ISO)" $(DEBUG_FAULT) $(BUILD)/kernel.elf $(RAM)
 test: test-boot
+	$(PYTHON) tools/crypto_test.py
+	$(PYTHON) tools/x509_test.py
 	$(PYTHON) tools/test_gathafs.py
 	clang -std=c11 -Wall -Wextra -Werror -I. -Ikernel tools/fs_native_test.c kernel/fs/gathafs.c libgatha/string.c -o build/fs-native-test
 	build/fs-native-test "$(DISK)"
@@ -194,6 +209,7 @@ ifeq ($(DEBUG_FAULT),none)
 	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage10-network-gp.iso test-boot
 	$(PYTHON) tools/foundation_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/network_test.py "$(ISO)" "$(DISK)"
+	$(PYTHON) tools/tls_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/power_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/soak_test.py "$(ISO)" "$(DISK)"
 endif
@@ -201,3 +217,4 @@ clean:
 	rm -rf build
 -include $(OBJECTS:.o=.d)
 -include $(BUILD)/libgatha/network.d $(BUILD)/apps/network/main.d
+-include $(TLS:.o=.d)

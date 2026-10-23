@@ -1,5 +1,6 @@
 #include "network.h"
 #include "memory.h"
+#include "tls/tls.h"
 int g_ipv4(const char *text,uint32_t *address) {
     uint32_t result=0;
     for(unsigned part=0;part<4;++part) {
@@ -20,14 +21,14 @@ int g_resolve(const char *name,uint32_t *address,g_net_wait wait) {
     int result;while((result=g_network(G_DNS_RESULT,handle,address,4))==-11)if((result=pause(wait)))break;
     g_network(G_DNS_CLOSE,handle,0,0);return result;
 }
-struct stream {int handle;unsigned at,size,deadline;g_net_wait wait;uint8_t buffer[2048];};
+struct stream {int handle;unsigned at,size,deadline;g_net_wait wait;struct tls *tls;uint8_t buffer[2048];};
 static int check(struct stream *s) {
     if((int32_t)(g_ticks()-s->deadline)>=0)return -110;
     return pause(s->wait);
 }
 static int receive(struct stream *s) {
     if(s->at<s->size)return 1;
-    int r;while((r=g_network(G_TCP_RECEIVE,s->handle,s->buffer,sizeof(s->buffer)))==-11)if((r=check(s)))return r;
+    int r;while((r=s->tls?g_tls_receive(s->tls,s->buffer,sizeof(s->buffer)):g_network(G_TCP_RECEIVE,s->handle,s->buffer,sizeof(s->buffer)))==-11)if((r=check(s)))return r;
     if(r<=0)return r;
     s->at=0;s->size=(unsigned)r;return 1;
 }
@@ -70,8 +71,9 @@ static int body(struct stream *s,void **data,unsigned *size,unsigned *capacity,u
 }
 int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait) {
     *data=0;*size=0;
-    if(memcmp(url,"http://",g_strlen(url)<7?g_strlen(url):7) || g_strlen(url)<7)return -95;
-    char host[254],path[768];unsigned hn=0,port=80;const char *p=url+7;
+    unsigned un=(unsigned)g_strlen(url);int secure=un>=8 && !memcmp(url,"https://",8);
+    if(!secure && (un<7 || memcmp(url,"http://",7)))return -95;
+    char host[254],path[768];unsigned hn=0,port=secure?443:80;const char *p=url+(secure?8:7);
     while(*p && *p!='/' && *p!=':'){if(hn>=253 || *p<=32 || *p>=127 || *p=='@' || *p=='#' || *p=='?')return -22;host[hn++]=*p++;}
     host[hn]=0;if(!hn)return -22;
     if(*p==':'){++p;port=0;unsigned digits=0;while(*p>='0' && *p<='9'){if(++digits>5)return -22;port=port*10+(unsigned)(*p++-'0');}if(!port || port>65535)return -22;}
@@ -83,14 +85,15 @@ int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait) {
     struct stream s={.handle=handle,.deadline=g_ticks()+12000,.wait=wait};unsigned capacity=0;
     while((r=g_network(G_TCP_STATUS,handle,0,0))==-11)if((r=check(&s)))break;
     if(r)goto done;
+    if(secure){r=g_tls_open(&s.tls,handle,host,s.deadline,wait);if(r)goto done;g_puts("TLS: authenticated TLS 1.2 / X25519 / AES-128-GCM\n");}
     char request[1200];g_copy(request,"GET ",sizeof(request));g_copy(request+4,path,sizeof(request)-4);
     unsigned n=(unsigned)g_strlen(request);g_copy(request+n," HTTP/1.1\r\nHost: ",sizeof(request)-n);n=(unsigned)g_strlen(request);
     g_copy(request+n,host,sizeof(request)-n);n=(unsigned)g_strlen(request);
-    if(port!=80){request[n++]=':';g_decimal(request+n,(int)port);n=(unsigned)g_strlen(request);}
-    g_copy(request+n,"\r\nUser-Agent: GathaOS/10\r\nAccept: */*\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n",sizeof(request)-n);
+    if(port!=(secure?443u:80u)){request[n++]=':';g_decimal(request+n,(int)port);n=(unsigned)g_strlen(request);}
+    g_copy(request+n,"\r\nUser-Agent: GathaOS/11\r\nAccept: */*\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n",sizeof(request)-n);
     n=(unsigned)g_strlen(request);
     for(unsigned sent=0;sent<n;) {
-        r=g_network(G_TCP_SEND,handle,request+sent,n-sent);
+        r=s.tls?g_tls_send(s.tls,request+sent,n-sent):g_network(G_TCP_SEND,handle,request+sent,n-sent);
         if(r==-11){if((r=check(&s)))goto done;continue;}if(r<=0){if(!r)r=-71;goto done;}sent+=(unsigned)r;
     }
     char text[2048];unsigned budget=8192;
@@ -123,6 +126,7 @@ int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait) {
     }
     budget=8192;while((r=line(&s,text,sizeof(text),&budget))>0)if(!field(text)){r=-71;break;}
 done:
+    g_tls_free(s.tls);
     g_network(G_TCP_CLOSE,handle,0,0);
     if(r<0){g_free(*data);*data=0;*size=0;return r;}
     return 0;

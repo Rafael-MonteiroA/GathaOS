@@ -33,3 +33,9 @@ in effect, including real boot verification and immutable earlier releases.
 Future stages need separate approval. A modern browser is a substantial project;
 no browser-engine import or relaxation of the original guest-code rules is
 authorized by this foundation step.
+
+On 2026-10-21 the user approved **Stage 11: HTTPS/TLS** after the completed
+network release. This covers original cryptography, a bounded TLS 1.2 client,
+UTC/entropy prerequisites, certificate verification, HTTPS downloads and real
+positive/negative boot tests. It does not authorize third-party guest code or
+starting the browser stage. The mandatory release workflow still applies.

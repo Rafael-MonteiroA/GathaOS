@@ -36,7 +36,7 @@ static void network_info(void) {
     g_copy(row,"Packets sent: ",80);g_decimal(row+g_strlen(row),(int)info.sent);print(row);
 }
 static void download(const char *url,const char *destination) {
-    print("Downloading HTTP. Esc cancels.");draw(1);
+    print("Downloading HTTP/HTTPS. Esc cancels.");draw(1);
     void *data=0;unsigned size=0;int r=g_http_get(url,&data,&size,network_wait);
     if(!r)r=g_save(destination,data,size);
     g_free(data);result("wget",r);
@@ -57,10 +57,10 @@ static void execute(void) {
     if(!argc)return;
     const char *cmd=args[0],*a=argc>1?args[1]:"",*b=argc>2?args[2]:"";
     char path[256],other[256];app_path(path,cwd,a);app_path(other,cwd,b);
-    if(!g_strcmp(cmd,"help"))print("ls cd cat mkdir rm cp mv echo clear ps mem uptime\nnet | nslookup domain | wget http://host/path destination\nhelp reboot shutdown\nPaths are absolute or relative. No quoting/redirection.");
+    if(!g_strcmp(cmd,"help"))print("ls cd cat mkdir rm cp mv echo clear ps mem uptime\nnet | nslookup domain | wget https://host/path destination\nhelp reboot shutdown\nPaths are absolute or relative. No quoting/redirection.");
     else if(!g_strcmp(cmd,"net"))network_info();
     else if(!g_strcmp(cmd,"nslookup")){uint32_t ip;draw(1);int r=*a?g_resolve(a,&ip,network_wait):-22;if(r)result("nslookup",r);else print_address("Address: ",ip);u.e.type=0;}
-    else if(!g_strcmp(cmd,"wget")){if(*a && *b)download(a,other);else print("Usage: wget http://host/path destination");}
+    else if(!g_strcmp(cmd,"wget")){if(*a && *b)download(a,other);else print("Usage: wget http(s)://host/path destination");}
     else if(!g_strcmp(cmd,"clear"))line_count=0;
     else if(!g_strcmp(cmd,"echo")){char text[256]="";for(unsigned i=1;i<argc;++i){unsigned n=(unsigned)g_strlen(text);g_copy(text+n,args[i],256-n);n=(unsigned)g_strlen(text);if(n<255){text[n]=' ';text[n+1]=0;}}print(text);}
     else if(!g_strcmp(cmd,"ls")){struct g_dirent e;int r;unsigned i=0;while((r=g_readdir(path,i++,&e))>0){char row[80];g_copy(row,e.stat.type==G_DIR?"[dir] ":"      ",80);g_copy(row+6,e.name,74);print(row);}if(r<0)result("ls",r);}

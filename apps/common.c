@@ -26,7 +26,11 @@ void app_status(char *to,const char *action,int result) {
     case -2:message=": Name or file not found";break;
     case -71:message=": Invalid or unsuccessful HTTP response";break;
     case -90:message=": Network message exceeds supported limits";break;
-    case -95:message=": Unsupported protocol (HTTP only, no HTTPS yet)";break;
+    case -95:message=": Unsupported protocol or encoding";break;
+    case -61:message=": Secure randomness unavailable (requires RDRAND)";break;
+    case -62:message=": Invalid UTC clock; check VM date and time";break;
+    case -74:message=": TLS protocol or authentication failure";break;
+    case -129:message=": TLS certificate rejected";break;
     case -100:message=": Network offline or waiting for DHCP";break;
     case -104:message=": Connection reset";break;
     case -110:message=": Connection timed out";break;
