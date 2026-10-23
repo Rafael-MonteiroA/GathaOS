@@ -4,7 +4,7 @@ import time
 from desktop_test import Desktop
 
 def launch(d,index):
-    before=set(d.windows());d.click(40,d.height-22);d.click(60,d.height-326+index*30)
+    before=set(d.windows());d.click(40,d.height-22);d.click(60,d.height-356+index*30)
     d.wait(lambda _:bool(set(d.windows())-before),f'launch application {index}')
     return d.windows()[(set(d.windows())-before).pop()]
 
@@ -58,9 +58,10 @@ def exercise_apps(request,evidence,serial,width,height,scan_set):
     for marker in ['mkdir OK','cp OK','mv OK','rm OK','Hello GathaOS','Saved from ring3.','shell works']:
         assert 'SHELL OUT: '+marker in d.log(),marker
     w=launch(d,7);d.screen('about');d.close(w)
+    w=launch(d,9);d.wait(lambda log:'BROWSER: ready' in log,'browser home');d.screen('browser');d.close(w)
     d.wait(lambda log:len(re.findall(r'TASK: exit pid=\d+ code=0x00000000',log))>=10,'application exits')
     assert 'PANIC' not in d.log()
-    return {'result':'PASS','apps':['terminal','files','editor','calculator','settings','sysmon','paint','about'],'checks':['start-menu processes','save/reopen text','decimal math','theme','task/memory view','bitmap save/reopen','file create/rename/delete/association','shell filesystem commands','all app exits']}
+    return {'result':'PASS','apps':['terminal','files','editor','calculator','settings','sysmon','paint','about','browser'],'checks':['start-menu processes','save/reopen text','decimal math','theme','task/memory view','bitmap save/reopen','file create/rename/delete/association','shell filesystem commands','browser home','all app exits']}
 
 def verify_disk(path):
     from mkgathafs import read_file,validate

@@ -29,7 +29,7 @@ def main():
     assert verify(['good','intermediate'],now=0)!=0
     for p in Path('certs').glob('*.der'):
         data=p.read_bytes();b=c.create_string_buffer(data);out=c.create_string_buffer(2048);assert lib.x509_parse(DER(c.addressof(b),len(data)),out)==0,p
-    subprocess.run(['clang','-std=c11','-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-Wall','-Wextra','-Werror','-I.','tools/x509_fuzz.c',*sources,'-o','build/x509-fuzz'],check=True)
+    subprocess.run(['clang','-std=c11','-O1','-g','-no-pie','-fsanitize=address,undefined','-fno-omit-frame-pointer','-Wall','-Wextra','-Werror','-I.','tools/x509_fuzz.c',*sources,'-o','build/x509-fuzz'],check=True)
     subprocess.run(['build/x509-fuzz',str(folder/'good.der')],check=True)
     print('X509 PASS: chains, SAN/IP/wildcards, validity, CA/path/EKU/critical constraints, signatures, DER bounds and sanitizer mutations',flush=True)
 if __name__=='__main__':main()

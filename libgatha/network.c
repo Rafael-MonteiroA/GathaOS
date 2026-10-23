@@ -21,7 +21,7 @@ int g_resolve(const char *name,uint32_t *address,g_net_wait wait) {
     int result;while((result=g_network(G_DNS_RESULT,handle,address,4))==-11)if((result=pause(wait)))break;
     g_network(G_DNS_CLOSE,handle,0,0);return result;
 }
-struct stream {int handle;unsigned at,size,deadline;g_net_wait wait;struct tls *tls;uint8_t buffer[2048];};
+struct stream {int handle;unsigned at,size,deadline,limit;g_net_wait wait;struct tls *tls;uint8_t buffer[2048];};
 static int check(struct stream *s) {
     if((int32_t)(g_ticks()-s->deadline)>=0)return -110;
     return pause(s->wait);
@@ -51,8 +51,8 @@ static char *field(char *text) {
     if(p==text || *p!=':')return 0;*p++=0;while(*p==' ' || *p=='\t')++p;
     unsigned n=(unsigned)g_strlen(p);while(n && (p[n-1]==' ' || p[n-1]=='\t'))p[--n]=0;return p;
 }
-static int append(void **data,unsigned *size,unsigned *capacity,const void *from,unsigned n) {
-    if(n>4194304-*size)return -27;
+static int append(void **data,unsigned *size,unsigned *capacity,const void *from,unsigned n,unsigned limit) {
+    if(n>limit-*size)return -27;
     if(*size+n>*capacity) {
         unsigned grow=*capacity?*capacity:4096;while(grow<*size+n)grow*=2;
         void *p=g_realloc(*data,grow);if(!p)return -12;*data=p;*capacity=grow;
@@ -63,13 +63,16 @@ static int body(struct stream *s,void **data,unsigned *size,unsigned *capacity,u
     while(count || closed) {
         int r=receive(s);if(r<=0)return r?r:closed?0:-71;
         unsigned n=s->size-s->at;if(!closed && n>count)n=count;
-        r=append(data,size,capacity,s->buffer+s->at,n);if(r)return r;
+        r=append(data,size,capacity,s->buffer+s->at,n,s->limit);if(r)return r;
         s->at+=n;if(!closed)count-=n;
         if((r=check(s)))return r;
     }
     return 0;
 }
-int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait) {
+int g_http_fetch(const char *url,struct g_http_response *response,unsigned limit,g_net_wait wait) {
+    memset(response,0,sizeof(*response));
+    if(!limit || limit>4194304)return -22;
+    void **data=&response->data;unsigned *size=&response->size;
     *data=0;*size=0;
     unsigned un=(unsigned)g_strlen(url);int secure=un>=8 && !memcmp(url,"https://",8);
     if(!secure && (un<7 || memcmp(url,"http://",7)))return -95;
@@ -82,7 +85,7 @@ int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait) {
     g_copy(path,*p?p:"/",sizeof(path));for(unsigned i=0;path[i];++i)if(path[i]<=32 || path[i]>=127 || path[i]=='#')return -22;
     uint32_t address;int r=g_resolve(host,&address,wait);if(r)return r;
     struct g_endpoint endpoint={address,port};int handle=g_network(G_TCP_CONNECT,0,&endpoint,sizeof(endpoint));if(handle<0)return handle;
-    struct stream s={.handle=handle,.deadline=g_ticks()+12000,.wait=wait};unsigned capacity=0;
+    struct stream s={.handle=handle,.deadline=g_ticks()+12000,.limit=limit,.wait=wait};unsigned capacity=0;
     while((r=g_network(G_TCP_STATUS,handle,0,0))==-11)if((r=check(&s)))break;
     if(r)goto done;
     if(secure){r=g_tls_open(&s.tls,handle,host,s.deadline,wait);if(r)goto done;g_puts("TLS: authenticated TLS 1.2 / X25519 / AES-128-GCM\n");}
@@ -90,7 +93,7 @@ int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait) {
     unsigned n=(unsigned)g_strlen(request);g_copy(request+n," HTTP/1.1\r\nHost: ",sizeof(request)-n);n=(unsigned)g_strlen(request);
     g_copy(request+n,host,sizeof(request)-n);n=(unsigned)g_strlen(request);
     if(port!=(secure?443u:80u)){request[n++]=':';g_decimal(request+n,(int)port);n=(unsigned)g_strlen(request);}
-    g_copy(request+n,"\r\nUser-Agent: GathaOS/11\r\nAccept: */*\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n",sizeof(request)-n);
+    g_copy(request+n,"\r\nUser-Agent: GathaOS/12\r\nAccept: */*\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n",sizeof(request)-n);
     n=(unsigned)g_strlen(request);
     for(unsigned sent=0;sent<n;) {
         r=s.tls?g_tls_send(s.tls,request+sent,n-sent):g_network(G_TCP_SEND,handle,request+sent,n-sent);
@@ -98,18 +101,30 @@ int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait) {
     }
     char text[2048];unsigned budget=8192;
     r=line(&s,text,sizeof(text),&budget);if(r<0)goto done;
-    if(r<12 || (memcmp(text,"HTTP/1.1 ",9) && memcmp(text,"HTTP/1.0 ",9)) || memcmp(text+9,"200",3) || (text[12] && text[12]!=' ')){r=-71;goto done;}
+    if(r<12 || (memcmp(text,"HTTP/1.1 ",9) && memcmp(text,"HTTP/1.0 ",9)) ||
+       text[9]<'2'||text[9]>'5'||text[10]<'0'||text[10]>'9'||text[11]<'0'||text[11]>'9'||
+       (text[12] && text[12]!=' ')){r=-71;goto done;}
+    response->status=(unsigned)(text[9]-'0')*100+(unsigned)(text[10]-'0')*10+(unsigned)(text[11]-'0');
     int length_seen=0,chunked=0;unsigned length=0;
     while((r=line(&s,text,sizeof(text),&budget))>0) {
         char *value=field(text);if(!value){r=-71;goto done;}
         if(equal(text,"content-length")) {
             if(length_seen++ || !*value){r=-71;goto done;}
-            for(;*value;++value){if(*value<'0' || *value>'9'){r=-71;goto done;}unsigned digit=(unsigned)(*value-'0');if(length>(4194304-digit)/10){r=-27;goto done;}length=length*10+digit;}
+            for(;*value;++value){if(*value<'0' || *value>'9'){r=-71;goto done;}unsigned digit=(unsigned)(*value-'0');if(digit>limit || length>(limit-digit)/10){r=-27;goto done;}length=length*10+digit;}
         } else if(equal(text,"transfer-encoding")) {if(chunked || !equal(value,"chunked")){r=-95;goto done;}chunked=1;}
         else if(equal(text,"content-encoding") && !equal(value,"identity")){r=-95;goto done;}
+        else if(equal(text,"location")) {
+            if(response->location[0] || !*value || g_strlen(value)>=sizeof(response->location)){r=-71;goto done;}
+            g_copy(response->location,value,sizeof(response->location));
+        } else if(equal(text,"content-type")) {
+            if(response->type[0] || !*value || g_strlen(value)>=sizeof(response->type)){r=-95;goto done;}
+            g_copy(response->type,value,sizeof(response->type));
+        }
     }
     if(r<0)goto done;
     if(chunked && length_seen){r=-71;goto done;}
+    if(response->status==301 || response->status==302 || response->status==303 ||
+       response->status==307 || response->status==308 || response->status==204){r=0;goto done;}
     if(!chunked){r=body(&s,data,size,&capacity,length,!length_seen);goto done;}
     for(;;) {
         budget=2048;r=line(&s,text,sizeof(text),&budget);if(r<=0){if(!r)r=-71;goto done;}
@@ -117,7 +132,7 @@ int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait) {
         for(p=text;*p && *p!=';';++p) {
             unsigned digit=*p>='0' && *p<='9'?(unsigned)(*p-'0'):lower(*p)>='a' && lower(*p)<='f'?(unsigned)(lower(*p)-'a'+10):16;
             if(digit>=16 || ++digits>8){r=-71;goto done;}
-            if(chunk>(4194304-digit)/16){r=-27;goto done;}chunk=chunk*16+digit;
+            if(digit>limit || chunk>(limit-digit)/16){r=-27;goto done;}chunk=chunk*16+digit;
         }
         if(!digits){r=-71;goto done;}
         if(!chunk)break;
@@ -130,4 +145,10 @@ done:
     g_network(G_TCP_CLOSE,handle,0,0);
     if(r<0){g_free(*data);*data=0;*size=0;return r;}
     return 0;
+}
+int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait) {
+    struct g_http_response response;
+    int r=g_http_fetch(url,&response,4194304,wait);
+    if(!r && response.status!=200){g_free(response.data);response.data=0;response.size=0;r=-71;}
+    *data=response.data;*size=response.size;return r;
 }

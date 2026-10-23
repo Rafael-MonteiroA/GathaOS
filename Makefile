@@ -28,10 +28,10 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage11-https$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage11-https-page.iso
-DISK ?= dist/gathaos-stage11-disk.img
-RUNTIME_DISK ?= dist/gathaos-https-disk.img
+ISO ?= dist/gathaos-stage12-browser$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage12-browser-page.iso
+DISK ?= dist/gathaos-stage12-disk.img
+RUNTIME_DISK ?= dist/gathaos-browser-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -47,7 +47,7 @@ OBJECTS += $(BUILD)/kernel/drivers/pcnet.o $(addprefix $(BUILD)/kernel/net/,ethe
 OBJECTS += $(BUILD)/kernel/drivers/security.o $(BUILD)/libgatha/crypto/sha256.o
 CRYPTO := $(addprefix $(BUILD)/libgatha/crypto/,sha256.o sha512.o aes_gcm.o x25519.o rsa.o)
 TLS := $(BUILD)/libgatha/tls/tls.o $(BUILD)/libgatha/tls/x509.o $(CRYPTO)
-APPS := terminal files editor calculator settings sysmon paint about
+APPS := terminal files editor calculator settings sysmon paint about browser
 OBJECTS += $(BUILD)/kernel/power.o $(addprefix $(BUILD)/,$(addsuffix -gex.o,$(APPS)))
 OBJECTS += $(BUILD)/demo-gex.o $(BUILD)/widgets-gex.o
 OBJECTS += $(BUILD)/gui/wm/wm.o $(BUILD)/gui/wm/launcher.o
@@ -55,6 +55,7 @@ OBJECTS += $(BUILD)/gui/wm/wm.o $(BUILD)/gui/wm/launcher.o
 all: iso
 $(addprefix $(BUILD)/,$(addsuffix .elf,$(APPS) demo widgets foundation)): $(BUILD)/libgatha/alloc.o
 $(BUILD)/terminal.elf: $(BUILD)/libgatha/network.o $(TLS)
+$(BUILD)/browser.elf: $(BUILD)/libgatha/network.o $(BUILD)/libgatha/url.o $(BUILD)/apps/browser/document.o $(TLS)
 $(BUILD)/tlscheck.elf: $(BUILD)/user-start.o $(BUILD)/apps/tlscheck/main.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/alloc.o $(TLS) libgatha/user.ld
 	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
 $(BUILD)/tlscheck.gex: $(BUILD)/tlscheck.elf tools/gex.py
@@ -148,10 +149,24 @@ $(BUILD)/about.gex: $(BUILD)/about.elf tools/gex.py
 	$(PYTHON) tools/gex.py $< $(BUILD)/about.bin $@ about_gex
 $(BUILD)/about-gex.o: $(BUILD)/about.gex
 	$(CC) $(CFLAGS) -c $(BUILD)/about.c -o $@
+$(BUILD)/browser.elf: $(BUILD)/user-start.o $(BUILD)/apps/browser/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/browser.gex: $(BUILD)/browser.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/browser.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/browser.bin $@ browser_gex
+$(BUILD)/browser-gex.o: $(BUILD)/browser.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/browser.c -o $@
 iso: $(ISO) $(DISK) $(RUNTIME_DISK)
 ifeq ($(ISO),dist/gathaos-stage8-release.iso)
 iso: dist/gathaos-1.0-rc1.iso
-dist/gathaos-1.0-rc1.iso: $(ISO)
+dist/gathaos-1.0-rc1.$(BUILD)/browser.elf: $(BUILD)/user-start.o $(BUILD)/apps/browser/main.o $(BUILD)/apps/common.o $(BUILD)/gui/toolkit/ui.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/arith.o libgatha/user.ld
+	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
+$(BUILD)/browser.gex: $(BUILD)/browser.elf tools/gex.py
+	$(OBJCOPY) -O binary $< $(BUILD)/browser.bin
+	$(PYTHON) tools/gex.py $< $(BUILD)/browser.bin $@ browser_gex
+$(BUILD)/browser-gex.o: $(BUILD)/browser.gex
+	$(CC) $(CFLAGS) -c $(BUILD)/browser.c -o $@
+iso: $(ISO)
 	if test -e "$@"; then cmp "$<" "$@"; else cp "$<" "$@"; fi
 endif
 $(DISK): tools/mkgathafs.py $(shell find rootfs -type f) $(addprefix $(BUILD)/,$(addsuffix .gex,$(APPS))) $(BUILD)/foundation.gex $(BUILD)/network.gex $(BUILD)/tlscheck.gex
@@ -193,6 +208,7 @@ run: iso
 test-boot: iso
 	QEMU="$(QEMU)" PS2_SET=$(PS2_SET) DISK="$(DISK)" bash scripts/smoke-test.sh "$(ISO)" $(DEBUG_FAULT) $(BUILD)/kernel.elf $(RAM)
 test: test-boot
+	$(PYTHON) tools/browser_native_test.py
 	$(PYTHON) tools/crypto_test.py
 	$(PYTHON) tools/x509_test.py
 	$(PYTHON) tools/test_gathafs.py
@@ -202,14 +218,15 @@ test: test-boot
 ifeq ($(DEBUG_FAULT),none)
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage10-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage12-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage10-network-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage10-network-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage10-network-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage12-browser-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage12-browser-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage12-browser-gp.iso test-boot
 	$(PYTHON) tools/foundation_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/network_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/tls_test.py "$(ISO)" "$(DISK)"
+	$(PYTHON) tools/browser_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/power_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/soak_test.py "$(ISO)" "$(DISK)"
 endif
@@ -218,3 +235,4 @@ clean:
 -include $(OBJECTS:.o=.d)
 -include $(BUILD)/libgatha/network.d $(BUILD)/apps/network/main.d
 -include $(TLS:.o=.d)
+-include $(BUILD)/libgatha/url.d $(BUILD)/apps/browser/document.d $(BUILD)/apps/browser/main.d

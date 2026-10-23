@@ -1,5 +1,8 @@
 # Stage 11 HTTPS
 
+Stage 12 reuses this TLS profile in the graphical Browser; see browser.md.
+The description below records the Stage 11 downloader and cryptographic limits.
+
 Terminal accepts `wget https://host/path destination` using original freestanding
 C cryptography and TLS, over the Stage 10 TCP driver. HTTP remains supported.
 There is no certificate bypass option, implicit HTTP fallback, or automatic

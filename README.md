@@ -1,4 +1,4 @@
-# GathaOS - HTTPS expansion
+# GathaOS - graphical browser expansion
 
 An original x86 operating system with its own BIOS bootloader, kernel, GathaFS
 filesystem, GEX executables, window manager and applications. Written in NASM
@@ -7,7 +7,7 @@ and freestanding C. No Linux/BSD kernel, GRUB, hosted libc or external guest GUI
 The desktop uses a quiet blue wallpaper, compact original bitmap typography,
 light panels and subtle beveled controls inspired by early-2000s desktops.
 Start opens Terminal, Files, Editor, Calculator, Settings, System Monitor,
-Paint, About and the widget showcase. Windows drag, stack, minimize, maximize,
+Paint, About, the widget showcase and Browser. Windows drag, stack, minimize, maximize,
 restore and close. Documents and drawings persist on the companion IDE disk.
 
 ## Build
@@ -26,22 +26,22 @@ Build on WSL's native filesystem to avoid Windows/WSL clock
 skew. All guest code is freestanding. The host operating system is only tooling.
 `make` defaults to `make iso`; `make clean` removes build/ and preserves dist/.
 
-Outputs: **dist/gathaos-stage11-https.iso** and the 32 MiB
-**dist/gathaos-stage11-disk.img** GathaFS v2 seed. Earlier artifacts remain.
-This is step 3 of the post-release plan; see docs/expansion-plan.md.
+Outputs: **dist/gathaos-stage12-browser.iso** and the 32 MiB
+**dist/gathaos-stage12-disk.img** GathaFS v2 seed. Earlier artifacts remain.
+This is step 4 of the post-release plan; see docs/expansion-plan.md.
 Existing ISO releases are immutable; changed bytes require a new ISO filename.
-The writable dist/gathaos-https-disk.img is created only if missing. Never replace a
+The writable dist/gathaos-browser-disk.img is created only if missing. Never replace a
 working disk with a seed: that would remove the user's documents.
 
 ## Run
 
 ```sh
-qemu-system-i386 -cpu max -rtc base=utc -cdrom dist/gathaos-stage11-https.iso -drive file=dist/gathaos-https-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -nic user,model=pcnet -serial stdio
+qemu-system-i386 -cpu max -rtc base=utc -cdrom dist/gathaos-stage12-browser.iso -drive file=dist/gathaos-browser-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -nic user,model=pcnet -serial stdio
 ```
 
 QEMU must be on PATH. On WSL, interactive graphics require WSLg or a display;
 tests are headless. A GathaFS IDE primary-master disk is required. For a fresh
-installation, copy the Stage 11 seed to a new working disk and use its path in
+installation, copy the Stage 12 seed to a new working disk and use its path in
 `-drive`. Keep existing working disks. Embedded apps work with older compatible
 GathaFS disks; /System/Apps on an older disk still contains its older executables.
 Ctrl+Alt releases QEMU's captured pointer/keyboard.
@@ -56,7 +56,7 @@ Right Ctrl+F leaves fullscreen. Shut down before changing the attached ISO.
 For networking, enable Adapter 1, NAT, cable connected, and select PCnet-PCI II
 (Am79C970A). VMware needs equivalent legacy BIOS/VGA/IDE/PCnet configuration.
 HTTPS additionally needs RDRAND exposed to the guest and a correct UTC RTC.
-Automated Stage 11 verification uses QEMU; Stage 11 has not been boot-tested in
+Automated Stage 12 verification uses QEMU; Stage 12 has not been boot-tested in
 VirtualBox or VMware. Earlier Stage 8 was booted in VirtualBox with a visible GUI.
 
 ## Network commands
@@ -73,10 +73,21 @@ cat /Documents/Google.txt
 Wait for DHCP to report connected. Escape cancels a download. HTTP/HTTPS downloads
 up to 4 MiB preserve an existing destination on failure. TLS 1.2 supports X25519,
 AES-128-GCM and selected RSA certificate chains, with domain/date/signature checks.
-There is no graphical browser yet. HTTPS access to a file on Google does not mean
-the OS can render its search interface. See [network.md](docs/network.md) and
+Browser renders basic HTML and text with clickable links, navigation and scrolling.
+HTTPS access to a file on Google does not mean it can render the search interface. See [network.md](docs/network.md) and
 [https.md](docs/https.md) for the supported profile and limitations, including the
 small trust store and absence of revocation checks or a security audit.
+
+## Browser
+
+Choose Start > Browser. Enter an address and press Enter or Go; bare domains use
+HTTPS. Click blue links, navigate with Back/Forward/Reload, and scroll with the
+right bar or Page Up/Down after clicking the page. Ctrl+L selects the address;
+Escape/Stop cancels loading. Home contains help and example links.
+
+Only basic HTML and plain text are supported. There are no CSS layouts,
+JavaScript, forms, images, cookies or Google search interface. HTTPS retains the
+limited Stage 11 certificate/cipher support. See [browser.md](docs/browser.md).
 
 ## Everyday controls
 
@@ -95,7 +106,7 @@ small trust store and absence of revocation checks or a security audit.
 
 ## Verification
 
-See docs/stage-11-report.md for this release's measured results and limitations.
+See docs/stage-12-report.md for this release's measured results and limitations.
 Earlier stage reports remain available.
 
 `make test` runs actual QEMU TCG boots: 64/256/512 MiB, native keyboard sets 1/2,
@@ -106,7 +117,7 @@ validates the filesystem independently, and checks frame/heap reclamation and
 bounded idle redraw. Diagnostic animation/worker tasks exit after six seconds.
 Each normal boot still runs the memory, IRQ, input, filesystem and isolation tests.
 
-Evidence is under build/test-*; Stage 11 release copies are in dist/stage11-evidence.
+Evidence is under build/test-*; Stage 12 release copies are in dist/stage12-evidence.
 New foundation tests launch a large GEX, exercise heap OOM and fault cleanup,
 verify multi-megabyte files across restarts, and test legacy disk/GEX loading.
 Host tests inject disk/flush failure into the actual filesystem implementation.
@@ -116,7 +127,9 @@ test downloads an external HTTP page; it requires internet access. TLS tests che
 original crypto against independent host implementations, certificate/DER parsing,
 server interoperability, tampering/replay/truncation and entropy/clock failures.
 The separate live TLS test compares Google's HTTPS robots.txt with a host fetch.
-Test roots never enter Terminal's trust store.
+Browser tests add real page navigation, pixel checks, cancellation and offline/TLS errors.
+Host tests exercise URL/HTML bounds with sanitizers. Test roots never enter the
+production Terminal or Browser trust stores.
 Serial logs, screenshots and JSON results identify exactly what was tested.
 The full suite takes well over ten minutes. A single configuration can run with
 `make test-boot RAM=64`. Fault builds require DEBUG_FAULT=page, readonly, div0 or
@@ -125,7 +138,7 @@ gp; use an ISO path under build/ to keep release artifacts separate.
 ## Scope and limits
 
 A release candidate for emulators, not a general-purpose PC replacement.
-No browser, USB, audio, package management or compatibility layers. Supports
+No modern browser engine, USB, audio, package management or compatibility layers. Supports
 PS/2 three-byte mouse and ASCII input, no wheel, ABNT2 or Unicode. Eight windows,
 sixteen tasks, 512 MiB managed RAM, 16 MiB kernel heap; no SMP or FPU/SIMD context.
 The loader accepts a kernel payload up to 448 KiB. Software presentation has no
@@ -151,6 +164,7 @@ not evidence of unlimited uptime or arbitrary-hardware compatibility.
 - [Foundation expansion](docs/foundation.md), [Stage 9 report](docs/stage-9-report.md)
 - [Networking](docs/network.md), [Stage 10 report](docs/stage-10-report.md)
 - [HTTPS/TLS](docs/https.md), [Stage 11 report](docs/stage-11-report.md)
+- [Browser](docs/browser.md), [Stage 12 report](docs/stage-12-report.md)
 
 Previous stage reports and ISOs remain available. Font artwork is original;
 permissions are in docs/graphics-font-license.txt and docs/panic-font-license.txt.

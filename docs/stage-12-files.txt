@@ -1,0 +1,439 @@
+Stage 12 - changed/generated files
+397 files
+gathaos/
+|-- Makefile
+|-- README.md
+|-- apps/
+|   |-- about/
+|   |   `-- main.c
+|   `-- browser/
+|       |-- document.c
+|       |-- document.h
+|       `-- main.c
+|-- dist/
+|   |-- gathaos-browser-disk.img
+|   |-- gathaos-stage12-browser.iso
+|   |-- gathaos-stage12-disk.img
+|   |-- stage12-SHA256SUMS.txt
+|   |-- stage12-build-verification.log
+|   `-- stage12-evidence/
+|       |-- el-torito.txt
+|       |-- test-div0-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-foundation-256/
+|       |   |-- after-fault-recovery.png
+|       |   |-- after-fault-recovery.ppm
+|       |   |-- disk.img
+|       |   |-- large-editor.png
+|       |   |-- large-editor.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-foundation-512/
+|       |   |-- after-fault-recovery.png
+|       |   |-- after-fault-recovery.ppm
+|       |   |-- disk.img
+|       |   |-- large-editor.png
+|       |   |-- large-editor.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-foundation-64/
+|       |   |-- after-fault-recovery.png
+|       |   |-- after-fault-recovery.ppm
+|       |   |-- disk.img
+|       |   |-- large-editor.png
+|       |   |-- large-editor.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-foundation-legacy/
+|       |   |-- after-fault-recovery.png
+|       |   |-- after-fault-recovery.ppm
+|       |   |-- disk.img
+|       |   |-- legacy-gex.png
+|       |   |-- legacy-gex.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-foundation-restart/
+|       |   |-- after-fault-recovery.png
+|       |   |-- after-fault-recovery.ppm
+|       |   |-- large-editor.png
+|       |   |-- large-editor.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-gp-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-network-browser-certificate/
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-browser-live/
+|       |   |-- browser-example.png
+|       |   |-- browser-example.ppm
+|       |   |-- browser-google-https.png
+|       |   |-- browser-google-https.ppm
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-browser-local/
+|       |   |-- browser-404.png
+|       |   |-- browser-404.ppm
+|       |   |-- browser-anchor.png
+|       |   |-- browser-anchor.ppm
+|       |   |-- browser-back.png
+|       |   |-- browser-back.ppm
+|       |   |-- browser-cancel-button.png
+|       |   |-- browser-cancel-button.ppm
+|       |   |-- browser-cancel-esc.png
+|       |   |-- browser-cancel-esc.ppm
+|       |   |-- browser-chunked.png
+|       |   |-- browser-chunked.ppm
+|       |   |-- browser-display-limit.png
+|       |   |-- browser-display-limit.ppm
+|       |   |-- browser-forward.png
+|       |   |-- browser-forward.ppm
+|       |   |-- browser-home-final.png
+|       |   |-- browser-home-final.ppm
+|       |   |-- browser-home.png
+|       |   |-- browser-home.ppm
+|       |   |-- browser-index.png
+|       |   |-- browser-index.ppm
+|       |   |-- browser-maximized.png
+|       |   |-- browser-maximized.ppm
+|       |   |-- browser-next.png
+|       |   |-- browser-next.ppm
+|       |   |-- browser-plain.png
+|       |   |-- browser-plain.ppm
+|       |   |-- browser-preserved-badredirect.png
+|       |   |-- browser-preserved-badredirect.ppm
+|       |   |-- browser-preserved-binary.png
+|       |   |-- browser-preserved-binary.ppm
+|       |   |-- browser-preserved-loop.png
+|       |   |-- browser-preserved-loop.ppm
+|       |   |-- browser-preserved-oversize.png
+|       |   |-- browser-preserved-oversize.ppm
+|       |   |-- browser-preserved-short.png
+|       |   |-- browser-preserved-short.ppm
+|       |   |-- browser-scheme-rejected.png
+|       |   |-- browser-scheme-rejected.ppm
+|       |   |-- browser-scroll-page.png
+|       |   |-- browser-scroll-page.ppm
+|       |   |-- browser-scroll-top.png
+|       |   |-- browser-scroll-top.ppm
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-browser-offline/
+|       |   |-- browser-offline.png
+|       |   |-- browser-offline.ppm
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-live/
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-nat/
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-offline/
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-tls-clock/
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-tls-entropy/
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-tls-live/
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-network-tls-local/
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   `-- server-events.json
+|       |-- test-network-wire/
+|       |   |-- disk.img
+|       |   |-- network-desktop.png
+|       |   |-- network-desktop.ppm
+|       |   |-- peer-events.json
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-none-256-set1/
+|       |   |-- about.png
+|       |   |-- about.ppm
+|       |   |-- browser.png
+|       |   |-- browser.ppm
+|       |   |-- calculator.png
+|       |   |-- calculator.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- disk.img
+|       |   |-- editor-reopened.png
+|       |   |-- editor-reopened.ppm
+|       |   |-- editor-saved.png
+|       |   |-- editor-saved.ppm
+|       |   |-- file-open-editor.png
+|       |   |-- file-open-editor.ppm
+|       |   |-- files.png
+|       |   |-- files.ppm
+|       |   |-- gex-from-disk.png
+|       |   |-- gex-from-disk.ppm
+|       |   |-- paint-reopened.png
+|       |   |-- paint-reopened.ppm
+|       |   |-- paint-saved.png
+|       |   |-- paint-saved.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- settings.png
+|       |   |-- settings.ppm
+|       |   |-- system-monitor.png
+|       |   |-- system-monitor.ppm
+|       |   |-- terminal.png
+|       |   `-- terminal.ppm
+|       |-- test-none-256-set2/
+|       |   |-- about.png
+|       |   |-- about.ppm
+|       |   |-- browser.png
+|       |   |-- browser.ppm
+|       |   |-- calculator.png
+|       |   |-- calculator.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- disk.img
+|       |   |-- editor-reopened.png
+|       |   |-- editor-reopened.ppm
+|       |   |-- editor-saved.png
+|       |   |-- editor-saved.ppm
+|       |   |-- elf.txt
+|       |   |-- file-open-editor.png
+|       |   |-- file-open-editor.ppm
+|       |   |-- files.png
+|       |   |-- files.ppm
+|       |   |-- gex-from-disk.png
+|       |   |-- gex-from-disk.ppm
+|       |   |-- kernel.map
+|       |   |-- paint-reopened.png
+|       |   |-- paint-reopened.ppm
+|       |   |-- paint-saved.png
+|       |   |-- paint-saved.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- settings.png
+|       |   |-- settings.ppm
+|       |   |-- system-monitor.png
+|       |   |-- system-monitor.ppm
+|       |   |-- terminal.png
+|       |   |-- terminal.ppm
+|       |   `-- undefined-symbols.txt
+|       |-- test-none-512-set2/
+|       |   |-- about.png
+|       |   |-- about.ppm
+|       |   |-- browser.png
+|       |   |-- browser.ppm
+|       |   |-- calculator.png
+|       |   |-- calculator.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- disk.img
+|       |   |-- editor-reopened.png
+|       |   |-- editor-reopened.ppm
+|       |   |-- editor-saved.png
+|       |   |-- editor-saved.ppm
+|       |   |-- file-open-editor.png
+|       |   |-- file-open-editor.ppm
+|       |   |-- files.png
+|       |   |-- files.ppm
+|       |   |-- gex-from-disk.png
+|       |   |-- gex-from-disk.ppm
+|       |   |-- paint-reopened.png
+|       |   |-- paint-reopened.ppm
+|       |   |-- paint-saved.png
+|       |   |-- paint-saved.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- settings.png
+|       |   |-- settings.ppm
+|       |   |-- system-monitor.png
+|       |   |-- system-monitor.ppm
+|       |   |-- terminal.png
+|       |   `-- terminal.ppm
+|       |-- test-none-64-set2/
+|       |   |-- about.png
+|       |   |-- about.ppm
+|       |   |-- browser.png
+|       |   |-- browser.ppm
+|       |   |-- calculator.png
+|       |   |-- calculator.ppm
+|       |   |-- cpu-registers.txt
+|       |   |-- disk.img
+|       |   |-- editor-reopened.png
+|       |   |-- editor-reopened.ppm
+|       |   |-- editor-saved.png
+|       |   |-- editor-saved.ppm
+|       |   |-- file-open-editor.png
+|       |   |-- file-open-editor.ppm
+|       |   |-- files.png
+|       |   |-- files.ppm
+|       |   |-- gex-from-disk.png
+|       |   |-- gex-from-disk.ppm
+|       |   |-- paint-reopened.png
+|       |   |-- paint-reopened.ppm
+|       |   |-- paint-saved.png
+|       |   |-- paint-saved.ppm
+|       |   |-- qemu.log
+|       |   |-- restart-qemu.log
+|       |   |-- restart-serial.log
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- settings.png
+|       |   |-- settings.ppm
+|       |   |-- system-monitor.png
+|       |   |-- system-monitor.ppm
+|       |   |-- terminal.png
+|       |   `-- terminal.ppm
+|       |-- test-page-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       |-- test-power-reboot/
+|       |   |-- disk.img
+|       |   |-- qemu.log
+|       |   |-- rebooted.png
+|       |   |-- rebooted.ppm
+|       |   |-- result.json
+|       |   `-- serial.log
+|       |-- test-power-shutdown/
+|       |   |-- disk.img
+|       |   |-- qemu.log
+|       |   |-- registers.txt
+|       |   |-- result.json
+|       |   |-- serial.log
+|       |   |-- shutdown.png
+|       |   `-- shutdown.ppm
+|       |-- test-readonly-256-set2/
+|       |   |-- cpu-registers.txt
+|       |   |-- elf.txt
+|       |   |-- kernel.map
+|       |   |-- qemu.log
+|       |   |-- result.json
+|       |   |-- screen.png
+|       |   |-- screen.ppm
+|       |   |-- serial.log
+|       |   `-- undefined-symbols.txt
+|       `-- test-soak/
+|           |-- desktop-preview.png
+|           |-- desktop-preview.ppm
+|           |-- disk.img
+|           |-- qemu.log
+|           |-- result.json
+|           |-- serial.log
+|           |-- soak-complete.png
+|           |-- soak-complete.ppm
+|           |-- soak-editor.png
+|           |-- soak-editor.ppm
+|           |-- start-menu.png
+|           |-- start-menu.ppm
+|           |-- welcome.png
+|           `-- welcome.ppm
+|-- docs/
+|   |-- applications.md
+|   |-- architecture.md
+|   |-- browser.md
+|   |-- expansion-plan.md
+|   |-- https.md
+|   |-- network.md
+|   |-- stage-12-files.txt
+|   `-- stage-12-report.md
+|-- gui/
+|   `-- wm/
+|       |-- launcher.c
+|       |-- protocol.h
+|       `-- wm.c
+|-- libgatha/
+|   |-- network.c
+|   |-- network.h
+|   |-- url.c
+|   `-- url.h
+|-- scripts/
+|   `-- run-qemu.sh
+`-- tools/
+    |-- apps_test.py
+    |-- browser_native_test.c
+    |-- browser_native_test.py
+    |-- browser_test.py
+    |-- network_test.py
+    |-- soak_test.py
+    |-- tls_test.py
+    `-- x509_test.py

@@ -1,7 +1,7 @@
 # Applications
 
 Start lists Terminal, Files, Text Editor, Calculator, Settings, System Monitor,
-Paint, About GathaOS and the earlier Widgets demo. Every launch creates a new
+Paint, About GathaOS, the earlier Widgets demo and Browser. Every launch creates a new
 ring-3 process with its own page directory. Each application is separately
 compiled and packed as GEX version 2 (GEX1 magic). Built-in images are embedded in the kernel so an
 older compatible data disk still works; a fresh release seed also contains their
@@ -31,7 +31,14 @@ Network waits yield to other applications and accept Escape cancellation. Close
 also cancels, and task cleanup releases all sockets/queries. Downloads buffer up
 to 4 MiB before staged saving; failed transfers preserve the destination. HTML is
 downloaded as a file, without rendering. See network.md for protocol limits and
-configuration. HTTPS and a browser are later roadmap steps.
+configuration. Stages 11/12 add HTTPS and the separate Browser application.
+
+## Browser
+
+Stage 12 adds Start > Browser (application index 9), also available as
+/System/Apps/browser.gex. The original text renderer supports basic HTML links,
+history, scrolling and HTTP(S) navigation. It does not implement CSS, JavaScript,
+forms or a modern Google search interface. See browser.md for controls and limits.
 
 ## Files
 

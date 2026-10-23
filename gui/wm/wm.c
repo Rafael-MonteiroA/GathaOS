@@ -230,13 +230,13 @@ static void render(void) {
     gfx_line(width-78,height-33,width-78,height-9,0xa5b6c9);
     gfx_text(width-64,height-28,clock,0x395570,1);
     if (menu) {
-        gfx_rect(11,height-387,244,340,0x526b83);
-        gfx_rect(8,height-390,244,340,0x8198b1);
-        gfx_rect(9,height-389,242,338,0xf9fbfd);
-        gfx_gradient(10,height-388,240,42,0x769abe,accent);
-        gfx_text(24,height-374,"GathaOS",0xffffff,1);
-        for(int i=0;i<9;++i){
-            int y=height-340+i*30,hover=mx>=16&&mx<244&&my>=y&&my<y+30;
+        gfx_rect(11,height-417,244,370,0x526b83);
+        gfx_rect(8,height-420,244,370,0x8198b1);
+        gfx_rect(9,height-419,242,368,0xf9fbfd);
+        gfx_gradient(10,height-418,240,42,0x769abe,accent);
+        gfx_text(24,height-404,"GathaOS",0xffffff,1);
+        for(int i=0;i<APP_COUNT;++i){
+            int y=height-370+i*30,hover=mx>=16&&mx<244&&my>=y&&my<y+30;
             if(hover)gfx_rect(14,y,232,28,0xdce9f6);
             if(i==1)folder_icon(24,y+8,16);
             else {gfx_rect(24,y+6,16,16,0x8da6bd);gfx_rect(25,y+7,14,14,0xf1f6fb);gfx_rect(28,y+10,8,3,accent);gfx_line(28,y+16,35,y+16,0x8da6bd);}
@@ -252,7 +252,7 @@ static void handle(const struct input_event *e) {
         if (focus>=0 && !windows[focus].minimized) queue(&windows[focus],(struct g_event){.type=G_KEY,.code=e->code,.ascii=e->ascii,.mods=e->modifiers,.pressed=e->pressed});
         return;
     }
-    if(menu)damage(8,height-390,248,344);
+    if(menu)damage(8,height-420,248,374);
     damage(mx,my,12,20); mx=e->x; my=e->y; damage(mx,my,12,20);
     int pressed=(int)e->buttons&~buttons,released=buttons&~(int)e->buttons; buttons=(int)e->buttons;
     klog("INPUT: mouse x="); klog_u32((unsigned)mx); klog(" y="); klog_u32((unsigned)my); klog(" buttons="); klog_u32((unsigned)buttons); klog("\r\n");
@@ -270,13 +270,13 @@ static void handle(const struct input_event *e) {
     }
     if (pressed&1) {
         if (my>=height-42) {
-            if (mx<104) { menu=!menu; damage(0,height-400,260,400); }
+            if (mx<104) { menu=!menu; damage(0,height-430,260,430); }
             else { int i=(mx-110)/94; if (mx>=110 && i<count) raise_window(order[i]); }
             return;
         }
         if (menu) {
-            if (mx>=16 && mx<244 && my>=height-340 && my<height-70) (void)desktop_launch((unsigned)(my-height+340)/30);
-            menu=0; damage(0,height-400,260,400); return;
+            if (mx>=16 && mx<244 && my>=height-370 && my<height-70) (void)desktop_launch((unsigned)(my-height+370)/30);
+            menu=0; damage(0,height-430,260,430); return;
         }
         for (int z=count-1;z>=0;--z) {
             int slot=order[z]; struct window *w=&windows[slot];

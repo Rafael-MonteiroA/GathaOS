@@ -69,6 +69,7 @@ def run(iso,seed):
                         d.wait(lambda _:d.windows()[w['id']]['w']==480,'restore')
                         d.click(w['x']+w['w']-76,w['y']+14)
                         d.click(140,743);d.close(w)
+                        w=launch(d,9);d.close(w)
                         d.move(4,4);time.sleep(2)
                         sample=health();samples.append(sample)
                         assert sample['windows']==0 and sample['free']==baseline['free'] and sample['heap']==baseline['heap'],(baseline,sample)

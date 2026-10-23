@@ -16,4 +16,11 @@ void g_ip_text(uint32_t address,char text[16]);
 typedef int (*g_net_wait)(void);
 int g_resolve(const char *name,uint32_t *address,g_net_wait wait);
 int g_http_get(const char *url,void **data,unsigned *size,g_net_wait wait);
+struct g_http_response {
+    void *data;
+    unsigned size,status;
+    char location[1024],type[128];
+};
+/* One request, no automatic redirects. Caller owns data on success. */
+int g_http_fetch(const char *url,struct g_http_response *response,unsigned limit,g_net_wait wait);
 #endif

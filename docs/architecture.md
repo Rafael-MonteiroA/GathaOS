@@ -77,6 +77,12 @@ RDRAND output and validated UTC RTC readings. Public roots are compiled into the
 application; a disk file cannot change Terminal's trust store. See https.md for
 the exact algorithms, bounds and security-policy limitations.
 
+Stage 12 adds a separate Browser GEX, using the shared user-mode HTTP/TLS code.
+URL resolution, bounded HTML scanning and visible-row text rendering live in
+user space. No new kernel syscall is needed. The Start menu adds index 9 while
+preserving existing application indices. See browser.md for navigation policy,
+resource caps and unsupported web features.
+
 ## Verification boundary
 
 QEMU TCG standard VGA/IDE/PS2 is the automated target. Tests use private copies of

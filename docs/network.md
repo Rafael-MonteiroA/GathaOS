@@ -135,3 +135,11 @@ Primary specifications used to write the original implementation:
 - [TCP, RFC 9293](https://www.rfc-editor.org/rfc/rfc9293.html), [HTTP/1.1, RFC 9112](https://www.rfc-editor.org/rfc/rfc9112.html)
 - [QEMU networking options](https://www.qemu.org/docs/master/system/invocation.html)
 - [VirtualBox 7.2 adapter and NAT configuration](https://docs.oracle.com/en/virtualization/virtualbox/7.2/user/networkingdetails.html)
+
+## Stage 12 HTTP API update
+
+The historical Stage 10 restrictions above describe that release. Stage 11
+added TLS (https.md). Stage 12 adds g_http_fetch with bounded status, Content-Type,
+Location and caller body limits. Browser handles up to five redirects and basic
+HTML/text; Terminal g_http_get still requires status 200 and does not follow
+redirects. Both send User-Agent GathaOS/12. See browser.md for the current policy.

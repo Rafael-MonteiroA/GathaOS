@@ -39,3 +39,10 @@ network release. This covers original cryptography, a bounded TLS 1.2 client,
 UTC/entropy prerequisites, certificate verification, HTTPS downloads and real
 positive/negative boot tests. It does not authorize third-party guest code or
 starting the browser stage. The mandatory release workflow still applies.
+
+On 2026-10-22 the user approved **Stage 12: basic graphical browser**, continued
+on 2026-10-23. This covers an original bounded HTML/text reader, clickable links,
+URL resolution, HTTP redirects, history, scrolling and cancellation, using the
+existing HTTP/TLS implementation. No imported browser code is allowed. Modern
+JavaScript/CSS web applications and broader TLS compatibility remain a later
+stage. The clean build, real boot, immutable artifacts and release workflow apply.
