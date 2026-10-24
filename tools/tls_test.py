@@ -75,7 +75,7 @@ def live(iso,seed):
     url='https://www.google.com/robots.txt'
     context=ssl.create_default_context();context.maximum_version=ssl.TLSVersion.TLSv1_2
     context.set_ciphers('ECDHE-RSA-AES128-GCM-SHA256')
-    request=urllib.request.Request(url,headers={'User-Agent':'GathaOS/13','Accept':'*/*','Accept-Encoding':'identity'})
+    request=urllib.request.Request(url,headers={'User-Agent':'GathaOS/14','Accept':'*/*','Accept-Encoding':'identity'})
     with urllib.request.urlopen(request,context=context,timeout=30) as response:expected=response.read()
     with contextlib.closing(Guest(iso,seed,'tls-live',['-cpu','max','-rtc','base=utc','-nic','user,model=pcnet'])) as g:
         g.boot();g.command_line('wget '+url+' /Documents/Google.txt','SHELL OUT: wget OK',seconds=120)

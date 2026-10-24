@@ -1,4 +1,4 @@
-# Gatha Browser (Stages 12-13)
+# Gatha Browser (Stages 12-14)
 
 Start > Browser launches the original ring-3 browser. Its blue/silver controls
 use the existing Gatha toolkit. It is a bounded text-oriented browser, not a
@@ -40,6 +40,7 @@ algorithm. Malformed markup uses a bounded best-effort scan, without execution.
 | Resource | Limit |
 |---|---:|
 | HTTP response body per browser request | 512 KiB |
+| Compressed response before decoding | 576 KiB |
 | Visible document text | 65,535 ASCII characters |
 | Layout rows | 8,192 |
 | Links / ID targets | 128 / 128 |
@@ -78,7 +79,9 @@ a caller body limit. It owns no navigation policy. g_http_get remains Terminal's
 200-only, 4 MiB downloader. Framing checks and cancellation are shared. Each
 request has the existing 120-second post-DNS deadline; a redirect sequence can
 therefore take longer. Stop/close remains available during each network wait.
-There is no proxy, compression, HTTP/2, HTTP/3, authentication or refresh header.
+Stage 14 decodes gzip and zlib-wrapped deflate responses with checksums and bounded
+output; see [compression.md](compression.md). There is no proxy, Brotli, HTTP/2,
+HTTP/3, authentication or refresh header.
 HTML base tags and meta refresh are ignored.
 
 HTTPS uses the exact Stage 11 TLS 1.2 and trust profile described in
@@ -101,6 +104,8 @@ links, history, scrolling, resize, failures, cancellation, offline operation and
 certificate rejection. Its separate live mode opens Example Domain and Google's
 HTTPS robots.txt. Release measurements and evidence belong in stage-12-report.md.
 Private fixture roots never enter the production browser.
+Stage 14 adds independent decoder vectors and real compressed-page/form tests;
+its measurements belong in stage-14-report.md.
 
 Specifications consulted for the original subset:
 [RFC 3986, URI resolution](https://www.rfc-editor.org/rfc/rfc3986.html) and

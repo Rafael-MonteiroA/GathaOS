@@ -98,7 +98,7 @@ def local(iso,seed):
             browser_window=launch(g.d,9);g.window=browser_window
             open_url(g,prefix+'/displaylimit');g.d.screen('browser-display-limit')
             toolbar(g,350,'BROWSER: loaded');g.d.screen('browser-home-final')
-            assert all(headers.get('User-Agent')=='GathaOS/13' for _,headers in HTTP.seen)
+            assert all(headers.get('User-Agent')=='GathaOS/14' for _,headers in HTTP.seen)
             g.finish(['start menu browser','redirect and relative link','back/forward/reload','anchor/scroll',
                       'maximize/restore reflow','pixel-verified HTML and literal plain text','HTTP 404 display','chunked page',
                       'MIME/scheme/redirect/size/truncation failure preserves page','Escape/Stop cancellation',

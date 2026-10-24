@@ -29,6 +29,7 @@ static const char home[]=
     " Ctrl+L selects the address. Escape or Stop cancels a request.</p>"
     "<h2>A simple browser</h2><p>This version reads text and basic HTML."
     " GET forms support text fields and submit buttons."
+    " Compressed web pages open automatically."
     " JavaScript, CSS, images, cookies and downloads are not supported."
     " Google search and other modern web apps are not supported yet.</p>"
     "<p>HTTPS checks certificates using the limited GathaOS TLS profile."

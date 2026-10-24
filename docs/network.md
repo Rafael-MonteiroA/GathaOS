@@ -143,3 +143,10 @@ added TLS (https.md). Stage 12 adds g_http_fetch with bounded status, Content-Ty
 Location and caller body limits. Browser handles up to five redirects and basic
 HTML/text; Terminal g_http_get still requires status 200 and does not follow
 redirects. Both send User-Agent GathaOS/12. See browser.md for the current policy.
+
+## Stage 14 content decoding
+
+Current Browser and Terminal send User-Agent GathaOS/14 and negotiate gzip or
+zlib-wrapped deflate. The original user-mode decoder checks checksums and bounds
+before exposing a response. This changes no driver or syscall. See compression.md
+for framing, resource limits, cancellation and the independent/real-boot tests.

@@ -54,3 +54,11 @@ real server/guest tests. Unsupported form features must not silently submit
 partial data. A clearly labelled offline demo makes the new controls discoverable.
 POST, passwords, uploads, cookies, CSS, JavaScript and full Google Search remain
 future work. The original-code and per-stage release workflow still apply.
+
+On 2026-10-24 the user asked to continue after Stage 13. The next bounded HTTP
+compatibility update is **Stage 14: compression**: original gzip and zlib-wrapped
+deflate decoding, response negotiation, checksums, resource/cancellation limits,
+independent host vectors and real Browser/Terminal boot tests. This implements
+one part of the planned HTTP interoperability work. It does not introduce TLS
+algorithms, CSS, images, JavaScript or full Google Search. No imported decoder
+code is allowed. The clean-build, boot, immutable-artifact and stage workflow apply.

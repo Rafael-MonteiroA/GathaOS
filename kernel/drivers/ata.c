@@ -3,16 +3,31 @@
 #include "serial.h"
 static uint32_t sectors;
 static void delay(void) { for (unsigned i = 0; i < 4; ++i) (void)inb(0x3f6); }
+/* Disk waits also run before IRQ0 exists and with interrupts masked. Reserve
+   PIT channel 2 for a polled 65535-tick one-shot (~55 ms), leaving channel 0
+   and the scheduler alone. CPU iteration counts are not elapsed time. */
+static void wait_clock(uint8_t saved) {
+    outb(0x61,saved&~3u);
+    outb(0x43,0xb0);outb(0x42,255);outb(0x42,255);
+    outb(0x61,(saved&~3u)|1u);
+}
 static int wait_ready(int data) {
-    for (unsigned i = 0; i < 10000000; ++i) {
+    uint8_t saved=0;unsigned elapsed=0;int timing=0,result=0;
+    /* The iteration ceiling is only a last resort if the PIT is broken. */
+    for (unsigned i = 0; i < 1000000000u; ++i) {
         uint8_t s = inb(0x1f7);
-        if (!s || s == 255) return 0;
+        if (!s || s == 255) goto done;
         if (!(s & 0x80)) {
-            if (s & 0x21) { klog("ATA: error status="); klog_hex(s); klog(" error="); klog_hex(inb(0x1f1)); klog("\r\n"); return 0; }
-            if (!data || (s & 8)) return 1;
+            if (s & 0x21) { klog("ATA: error status="); klog_hex(s); klog(" error="); klog_hex(inb(0x1f1)); klog("\r\n"); goto done; }
+            if (!data || (s & 8)) {result=1;goto done;}
         }
+        if(!timing){saved=inb(0x61);timing=1;wait_clock(saved);}
+        else if(inb(0x61)&32){if(++elapsed==600)break;wait_clock(saved);}
     }
-    klog("ATA: polling timeout\r\n"); return 0;
+    klog("ATA: polling timeout\r\n");
+done:
+    if(timing)outb(0x61,saved);
+    return result;
 }
 int ata_init(void) {
     outb(0x3f6,2); /* Polling, no IDE IRQ. */

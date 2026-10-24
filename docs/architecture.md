@@ -97,3 +97,13 @@ UI binds text editors to that metadata, manages focus, and uses the existing
 HTTP/TLS fetch path. Unsupported forms fail before a request. No new syscall or
 kernel networking path is added. The offline demo uses explicit about:forms
 navigation and never turns a web response into privileged local content.
+
+Stage 14 links an original bounded inflater into Terminal and Browser. The HTTP
+helper first validates framing, then decodes gzip/zlib into a separate bounded
+user buffer and exposes it only after checksum success. UI/deadline polling
+continues during decoding. No kernel ABI or TLS trust change is involved;
+see compression.md for limits and independent decoder/real-boot verification.
+The ATA polling deadline now uses reserved PIT channel 2, because boot-time and
+interrupt-masked disk operations cannot rely on scheduler ticks. Channel 0 and
+the kernel ABI are unchanged. A true timeout still enters the existing filesystem
+write-failure path; synchronous disk I/O can stall the GUI while waiting.
