@@ -37,8 +37,9 @@ configuration. Stages 11/12 add HTTPS and the separate Browser application.
 
 Stage 12 adds Start > Browser (application index 9), also available as
 /System/Apps/browser.gex. The original text renderer supports basic HTML links,
-history, scrolling and HTTP(S) navigation. It does not implement CSS, JavaScript,
-forms or a modern Google search interface. See browser.md for controls and limits.
+history, scrolling and HTTP(S) navigation. It does not implement CSS, JavaScript or
+a modern Google search interface. Stage 13 adds GET forms and an offline demo;
+see forms.md for supported fields and keyboard interaction. See browser.md for controls and limits.
 
 ## Files
 

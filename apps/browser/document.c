@@ -65,14 +65,15 @@ static void newline(struct page *p) {
     if(p->size&&p->text[p->size-1]==' ')--p->size;
     if(p->size&&p->text[p->size-1]!='\n')emit(p,'\n',0,0,0);
 }
-static int attribute(const char *s,unsigned n,const char *name,char *out,unsigned capacity) {
-    unsigned i=0;
+static int bad_attribute(char *out) {out[0]=0;return -1;}
+int page_attribute(const char *s,unsigned n,const char *name,char *out,unsigned capacity,int exact) {
+    unsigned i=0;out[0]=0;
     while(i<n) {
         while(i<n&&(space((unsigned char)s[i])||s[i]=='/'))++i;
         unsigned start=i;while(i<n&&!space((unsigned char)s[i])&&s[i]!='='&&s[i]!='/')++i;
         unsigned size=i-start;if(!size){++i;continue;}
         while(i<n&&space((unsigned char)s[i]))++i;
-        if(i==n||s[i]!='=')continue;
+        if(i==n||s[i]!='='){if(same(s+start,size,name))return 1;continue;}
         ++i;while(i<n&&space((unsigned char)s[i]))++i;
         char quote=i<n&&(s[i]=='\''||s[i]=='"')?s[i++]:0;
         unsigned value=i;while(i<n&&(quote?s[i]!=quote:!space((unsigned char)s[i])))++i;
@@ -80,16 +81,21 @@ static int attribute(const char *s,unsigned n,const char *name,char *out,unsigne
         if(!same(s+start,size,name))continue;
         unsigned to=0;
         while(value<end){
-            if(!g_strcmp(name,"href")&&(unsigned char)s[value]>=127)return -1;
-            unsigned used,c=character(s+value,end-value,&used,1);value+=used;
-            if(to+1>=capacity)return -1;
+            if((exact||!g_strcmp(name,"href"))&&(unsigned char)s[value]>=127)return bad_attribute(out);
+            unsigned used,c=character(s+value,end-value,&used,1);
+            if(exact&&s[value]=='&'&&value+1<end&&s[value+1]=='#'&&used==1)return bad_attribute(out);
+            value+=used;
+            if(to+1>=capacity)return bad_attribute(out);
             /* Text fallback must never rewrite a link's destination. */
-            if(!g_strcmp(name,"href")&&(c<=32||c>=127))return -1;
+            if((exact&&(c<32||c>=127))||(!g_strcmp(name,"href")&&(c<=32||c>=127)))return bad_attribute(out);
             out[to++]=c<128?(char)c:glyph(c);
         }
         out[to]=0;return 1;
     }
     out[0]=0;return 0;
+}
+static int attribute(const char *s,unsigned n,const char *name,char *out,unsigned capacity) {
+    return page_attribute(s,n,name,out,capacity,0);
 }
 static int block(const char *s,unsigned n) {
     const char *names[]={"p","div","section","article","header","footer","main","nav","ul","ol","li","pre","blockquote","table","tr","dl","dt","dd","hr"};
@@ -99,6 +105,7 @@ static int block(const char *s,unsigned n) {
 void page_parse(struct page *p,const void *data,unsigned size,int html,const char *base) {
     memset(p,0,sizeof(*p));const char *s=data;unsigned i=0,link=0,title_size=0;
     int heading=0,pre=0,head=0,title=0;char raw[16]="";
+    struct form_parser form={.form=-1,.button=-1};
     while(i<size&&!p->truncated) {
         if(raw[0]) {
             unsigned n=(unsigned)g_strlen(raw);
@@ -113,16 +120,27 @@ void page_parse(struct page *p,const void *data,unsigned size,int html,const cha
             unsigned end=begin;while(end<size&&((lower(s[end])>='a'&&lower(s[end])<='z')||(s[end]>='0'&&s[end]<='9')))++end;
             unsigned name_size=end-begin,finish=end;char quote=0;
             while(finish<size){char c=s[finish];if(quote){if(c==quote)quote=0;}else if(c=='\''||c=='"')quote=c;else if(c=='>')break;++finish;}
-            if(finish==size){if(raw[0]||head)break;emit(p,'<',link,heading,0);++i;html=0;continue;}
+            if(finish==size){p->forms_blocked=1;if(raw[0]||head)break;emit(p,'<',link,heading,0);++i;html=0;continue;}
             if(raw[0]){if(closing&&same(s+begin,name_size,raw))raw[0]=0;i=finish+1;continue;}
             if(!name_size){i=finish+1;continue;}
-            if(same(s+begin,name_size,"script")||same(s+begin,name_size,"style")||same(s+begin,name_size,"iframe")) {
+            if(same(s+begin,name_size,"script")||same(s+begin,name_size,"style")||same(s+begin,name_size,"iframe")||same(s+begin,name_size,"template")) {
+                if(same(s+begin,name_size,"template"))p->forms_blocked=1;
                 if(!closing){unsigned n=name_size<15?name_size:15;for(unsigned j=0;j<n;++j)raw[j]=lower(s[begin+j]);raw[n]=0;}i=finish+1;continue;
             }
             if(same(s+begin,name_size,"head"))head=!closing;
             if(same(s+begin,name_size,"body"))head=0;
             if(same(s+begin,name_size,"title"))title=!closing;
+            if(!closing&&same(s+begin,name_size,"base"))p->forms_blocked=1;
             if(!head&&!title) {
+                unsigned controls=p->control_count;
+                if(page_form_tag(p,&form,s+begin,name_size,s+end,finish-end,closing,base)) {
+                    newline(p);
+                    if(p->control_count>controls&&p->controls[controls].type!=FIELD_HIDDEN) {
+                        p->controls[controls].offset=p->size;
+                        emit(p,1,0,0,0);emit(p,'\n',0,0,0);emit(p,' ',0,0,0);emit(p,'\n',0,0,0);
+                    }
+                    i=finish+1;continue;
+                }
                 if(block(s+begin,name_size)||same(s+begin,name_size,"br"))newline(p);
                 if(name_size==2&&lower(s[begin])=='h'&&s[begin+1]>='1'&&s[begin+1]<='6')heading=!closing;
                 if(same(s+begin,name_size,"pre"))pre=!closing;
@@ -145,7 +163,11 @@ void page_parse(struct page *p,const void *data,unsigned size,int html,const cha
         }
         if(raw[0]){++i;continue;}
         unsigned used,c=character(s+i,size-i,&used,html);i+=used;
-        if(title) {
+        if(form.button>=0) {
+            struct page_control *control=&p->controls[form.button];char ch=space(c)?' ':glyph(c);
+            if(form.caption_size<sizeof(control->caption)-1&&(ch!=' '||!form.caption_size||control->caption[form.caption_size-1]!=' '))
+                control->caption[form.caption_size++]=ch;
+        } else if(title) {
             if(title_size<sizeof(p->title)-1){char ch=space(c)?' ':glyph(c);if(ch!=' '||!title_size||p->title[title_size-1]!=' ')p->title[title_size++]=ch;}
         } else if(!head) {
             if(!html||pre) {if(c=='\r')continue;if(c=='\n')emit(p,'\n',link,heading,0);else if(c=='\t'){for(int j=0;j<4;++j)emit(p,' ',link,heading,0);}else emit(p,glyph(c),link,heading,0);}

@@ -34,6 +34,73 @@ static void invariants(struct page *p) {
     assert(!p->text[p->size]);
     for(unsigned i=0;i<p->size;++i)assert(p->link[i]<=p->link_count);
     for(unsigned i=0;i<p->row_count;++i)assert(p->rows[i].start<=p->rows[i].end&&p->rows[i].end<=p->size&&p->rows[i].end-p->rows[i].start<=(unsigned)p->columns);
+    assert(p->form_count<=PAGE_FORMS&&p->control_count<=PAGE_CONTROLS);
+    for(unsigned i=0;i<p->control_count;++i){struct page_control *c=&p->controls[i];assert(c->form<p->form_count&&c->maximum<=255);assert(memchr(c->name,0,sizeof(c->name))&&memchr(c->value,0,sizeof(c->value)));}
+}
+static void form_html(struct page *p,const char *html) {
+    page_parse(p,html,(unsigned)strlen(html),1,"https://unit.test/dir/form?old=1");page_layout(p,80);invariants(p);
+}
+static void form_tests(struct page *p) {
+    char out[G_URL_MAX];int invalid;
+    const char *good="<form action='../search?discard=1#result' method=GET><input type=search name=q value='a +&amp;=/%#~' required>"
+        "<input type=hidden name=tag value=one><input type=hidden name=tag value=two>"
+        "<input name=skip value=no disabled><input name=read value=yes readonly><input value=unnamed>"
+        "<button name=go value=first>Find <b>now</b></button><input type=submit name=go value=second></form>";
+    form_html(p,good);assert(p->form_count==1&&p->control_count==8&&!strcmp(p->controls[6].caption,"Find now"));
+    assert(!page_submit(p,0,"https://unit.test/",out,&invalid));
+    assert(!strcmp(out,"https://unit.test/search?q=a+%2B%26%3D%2F%25%23%7E&tag=one&tag=two&read=yes&go=first#result"));
+    assert(!page_submit(p,7,"https://unit.test/",out,&invalid)&&strstr(out,"go=second"));
+    p->controls[0].value[0]=0;assert(page_submit(p,6,"https://unit.test/",out,&invalid)==-22&&invalid==0);
+    p->controls[0].readonly=1;assert(!page_submit(p,6,"https://unit.test/",out,&invalid));
+    form_html(p,"<form><input name=q value=one></form><form action='/other'><input name=x value=two><button>Go</button></form>");
+    assert(!page_submit(p,0,"https://unit.test/",out,&invalid)&&!strcmp(out,"https://unit.test/dir/form?q=one"));
+    assert(!page_submit(p,2,"https://unit.test/",out,&invalid)&&!strcmp(out,"https://unit.test/other?x=two"));
+    form_html(p,"<form><input name=a><input name=b></form>");assert(page_submit(p,0,"https://unit.test/",out,&invalid)==-11);
+    form_html(p,"<form><input name=a><button disabled>Stop</button><button>Go</button></form>");
+    assert(page_submit(p,0,"https://unit.test/",out,&invalid)==-11);assert(!page_submit(p,2,"https://unit.test/",out,&invalid));
+    const char *bad[]={
+        "<form method=post><input name=q><button>Go</button></form>",
+        "<form action='javascript:bad()'><input name=q></form>",
+        "<form><input type=password name=p><button>Go</button></form>",
+        "<form><input name=q><select name=x><option>A</option></select></form>",
+        "<form><input name=q><textarea name=x>text</textarea></form>",
+        "<form><fieldset disabled><input name=q></fieldset></form>",
+        "<form><input name=q form=other></form>",
+        "<form><input name=q value='caf&#233;'></form>",
+        "<form><input name=q value='caf\xc3\xa9'></form>",
+        "<form><input name=q value='x&#0;y'></form>",
+        "<form><input name=q value='x&#10;y'></form>",
+        "<form><input name=q><form><input name=b></form></form>",
+        "<form target=_blank><input name=q></form>",
+        "<form><input name=q pattern='[0-9]'></form>",
+        "<form><input name=q maxlength=2 value=long></form>",
+        "<form><input name=q><button formaction='/other'>Go</button></form>",
+        "<form onsubmit='change()'><input name=q></form>",
+        "<form><input name=q minlength=3></form>",
+        "<head><base href='https://other.test/'></head><form><input name=q></form>",
+        "<form><input name=q><input name='unterminated"};
+    for(unsigned i=0;i<sizeof(bad)/sizeof(*bad);++i){form_html(p,bad[i]);assert(page_submit(p,p->control_count-1,"https://unit.test/",out,&invalid)<0);}
+    form_html(p,"<form action='http://unit.test/search'><input name=q value=yes></form>");
+    assert(page_submit(p,0,"https://unit.test/",out,&invalid)==-13);
+    assert(!page_submit(p,0,"http://unit.test/",out,&invalid));
+    form_html(p,"<form><input name=q maxlength=4><input type=submit value=Go></form>");assert(p->controls[0].maximum==4);
+    memset(p->controls[0].value,'%',255);p->controls[0].value[255]=0;assert(page_submit(p,1,"https://unit.test/",out,&invalid)==-36);
+    char many[8192]="<form>";for(unsigned i=0;i<PAGE_CONTROLS+1;++i)strcat(many,"<input name=q>");strcat(many,"</form>");
+    form_html(p,many);assert(p->control_count==PAGE_CONTROLS&&page_submit(p,0,"https://unit.test/",out,&invalid)==-95);
+    many[0]=0;for(unsigned i=0;i<PAGE_FORMS+1;++i)strcat(many,"<form><input name=q></form>");
+    form_html(p,many);assert(p->form_count==PAGE_FORMS&&page_submit(p,0,"https://unit.test/",out,&invalid)==-95);
+    form_html(p,"<template><form><input name=hidden></form></template><form><input name=q></form>");
+    assert(p->form_count==1&&page_submit(p,0,"https://unit.test/",out,&invalid)==-95);
+    form_html(p,"<form><input name=q><input type=hidden name=_charset_ value=wrong></form>");
+    assert(!page_submit(p,0,"https://unit.test/",out,&invalid)&&strstr(out,"_charset_=UTF-8"));
+    unsigned rng=0x13579bdf;char mutated[2048];
+    for(unsigned round=0;round<6000;++round) {
+        strcpy(mutated,good);unsigned n=(unsigned)strlen(mutated);
+        for(unsigned j=0;j<1+round%12;++j){rng=rng*1664525+1013904223;unsigned at=rng%n;rng=rng*1664525+1013904223;mutated[at]=(char)(rng>>24);}
+        page_parse(p,mutated,n,1,"https://unit.test/dir/form");page_layout(p,1+(int)(round%100));invariants(p);
+        for(unsigned i=0;i<p->control_count;++i)if(!page_submit(p,i,"https://unit.test/",out,&invalid))assert(!g_url("",out,out));
+    }
+    puts("FORMS NATIVE PASS: encoding, ownership, validation, unsupported cases, bounds, 6000 ASan/UBSan mutations");
 }
 int main(void) {
     url_tests();struct page *p=malloc(sizeof(*p));assert(p);
@@ -64,5 +131,5 @@ int main(void) {
         page_parse(p,fuzz,n,round&1,"https://unit.test/dir/");page_layout(p,(int)(round%140)+1);invariants(p);
         fuzz[n]=0;(void)g_url("https://unit.test/dir/",fuzz,out);
     }
-    free(p);puts("BROWSER NATIVE PASS: RFC URI vectors, bounded HTML/text, MIME, UTF-8 fallback, 12000 ASan/UBSan mutations");return 0;
+    form_tests(p);free(p);puts("BROWSER NATIVE PASS: RFC URI vectors, bounded HTML/text, MIME, UTF-8 fallback, 12000 ASan/UBSan mutations");return 0;
 }

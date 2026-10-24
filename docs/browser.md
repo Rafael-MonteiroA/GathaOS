@@ -1,4 +1,4 @@
-# Gatha Browser (Stage 12)
+# Gatha Browser (Stages 12-13)
 
 Start > Browser launches the original ring-3 browser. Its blue/silver controls
 use the existing Gatha toolkit. It is a bounded text-oriented browser, not a
@@ -22,7 +22,8 @@ are included.
 
 The Home page links to Example Domain and Google's public robots.txt. Reading
 that Google file over authenticated HTTPS does not provide Google's search
-interface. This release has no forms or JavaScript.
+interface. Stage 13 adds limited GET forms; JavaScript remains unsupported.
+Use Forms demo or `about:forms` for an offline example; see [forms.md](forms.md).
 
 ## Renderer and resource bounds
 
@@ -56,7 +57,7 @@ Only Content-Type text/html and text/plain are displayed; missing/other types
 are rejected, as are explicit charsets other than UTF-8 or US-ASCII. HTTP 204 is
 empty. HTTP 4xx/5xx bodies with a supported type can be displayed with an error
 status. No MIME sniffing, downloads, local-file browsing, file association,
-images, audio/video, CSS, JavaScript, forms, cookies, credentials, clipboard,
+images, audio/video, CSS, JavaScript, POST forms, cookies, credentials, clipboard,
 tabs, bookmarks, persistent history, printing or password management.
 
 ## URLs, HTTP and TLS

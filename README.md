@@ -1,4 +1,4 @@
-# GathaOS - graphical browser expansion
+# GathaOS - browser forms expansion
 
 An original x86 operating system with its own BIOS bootloader, kernel, GathaFS
 filesystem, GEX executables, window manager and applications. Written in NASM
@@ -26,22 +26,22 @@ Build on WSL's native filesystem to avoid Windows/WSL clock
 skew. All guest code is freestanding. The host operating system is only tooling.
 `make` defaults to `make iso`; `make clean` removes build/ and preserves dist/.
 
-Outputs: **dist/gathaos-stage12-browser.iso** and the 32 MiB
-**dist/gathaos-stage12-disk.img** GathaFS v2 seed. Earlier artifacts remain.
-This is step 4 of the post-release plan; see docs/expansion-plan.md.
+Outputs: **dist/gathaos-stage13-forms.iso** and the 32 MiB
+**dist/gathaos-stage13-disk.img** GathaFS v2 seed. Earlier artifacts remain.
+This is the first forms update after the basic browser; see docs/expansion-plan.md.
 Existing ISO releases are immutable; changed bytes require a new ISO filename.
-The writable dist/gathaos-browser-disk.img is created only if missing. Never replace a
+The writable dist/gathaos-forms-disk.img is created only if missing. Never replace a
 working disk with a seed: that would remove the user's documents.
 
 ## Run
 
 ```sh
-qemu-system-i386 -cpu max -rtc base=utc -cdrom dist/gathaos-stage12-browser.iso -drive file=dist/gathaos-browser-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -nic user,model=pcnet -serial stdio
+qemu-system-i386 -cpu max -rtc base=utc -cdrom dist/gathaos-stage13-forms.iso -drive file=dist/gathaos-forms-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -nic user,model=pcnet -serial stdio
 ```
 
 QEMU must be on PATH. On WSL, interactive graphics require WSLg or a display;
 tests are headless. A GathaFS IDE primary-master disk is required. For a fresh
-installation, copy the Stage 12 seed to a new working disk and use its path in
+installation, copy the Stage 13 seed to a new working disk and use its path in
 `-drive`. Keep existing working disks. Embedded apps work with older compatible
 GathaFS disks; /System/Apps on an older disk still contains its older executables.
 Ctrl+Alt releases QEMU's captured pointer/keyboard.
@@ -56,7 +56,7 @@ Right Ctrl+F leaves fullscreen. Shut down before changing the attached ISO.
 For networking, enable Adapter 1, NAT, cable connected, and select PCnet-PCI II
 (Am79C970A). VMware needs equivalent legacy BIOS/VGA/IDE/PCnet configuration.
 HTTPS additionally needs RDRAND exposed to the guest and a correct UTC RTC.
-Automated Stage 12 verification uses QEMU; Stage 12 has not been boot-tested in
+Automated Stage 13 verification uses QEMU; Stage 13 has not been boot-tested in
 VirtualBox or VMware. Earlier Stage 8 was booted in VirtualBox with a visible GUI.
 
 ## Network commands
@@ -85,8 +85,13 @@ HTTPS. Click blue links, navigate with Back/Forward/Reload, and scroll with the
 right bar or Page Up/Down after clicking the page. Ctrl+L selects the address;
 Escape/Stop cancels loading. Home contains help and example links.
 
+Choose **Forms demo** (or enter `about:forms`) to try typing and submitting a
+local example. Compatible web pages support GET text/search fields, hidden
+values and submit buttons. Tab/Shift+Tab moves focus; Enter submits.
+See [forms.md](docs/forms.md) for supported controls and bounds.
+
 Only basic HTML and plain text are supported. There are no CSS layouts,
-JavaScript, forms, images, cookies or Google search interface. HTTPS retains the
+JavaScript, images, cookies or Google search interface. HTTPS retains the
 limited Stage 11 certificate/cipher support. See [browser.md](docs/browser.md).
 
 ## Everyday controls
@@ -106,7 +111,7 @@ limited Stage 11 certificate/cipher support. See [browser.md](docs/browser.md).
 
 ## Verification
 
-See docs/stage-12-report.md for this release's measured results and limitations.
+See docs/stage-13-report.md for this release's measured results and limitations.
 Earlier stage reports remain available.
 
 `make test` runs actual QEMU TCG boots: 64/256/512 MiB, native keyboard sets 1/2,
@@ -117,7 +122,7 @@ validates the filesystem independently, and checks frame/heap reclamation and
 bounded idle redraw. Diagnostic animation/worker tasks exit after six seconds.
 Each normal boot still runs the memory, IRQ, input, filesystem and isolation tests.
 
-Evidence is under build/test-*; Stage 12 release copies are in dist/stage12-evidence.
+Evidence is under build/test-*; Stage 13 release copies are in dist/stage13-evidence.
 New foundation tests launch a large GEX, exercise heap OOM and fault cleanup,
 verify multi-megabyte files across restarts, and test legacy disk/GEX loading.
 Host tests inject disk/flush failure into the actual filesystem implementation.
@@ -128,7 +133,8 @@ original crypto against independent host implementations, certificate/DER parsin
 server interoperability, tampering/replay/truncation and entropy/clock failures.
 The separate live TLS test compares Google's HTTPS robots.txt with a host fetch.
 Browser tests add real page navigation, pixel checks, cancellation and offline/TLS errors.
-Host tests exercise URL/HTML bounds with sanitizers. Test roots never enter the
+Form tests verify actual HTTP query bytes and keyboard editing; the soak submits
+the offline form every cycle. Host tests exercise URL/HTML/form bounds with sanitizers. Test roots never enter the
 production Terminal or Browser trust stores.
 Serial logs, screenshots and JSON results identify exactly what was tested.
 The full suite takes well over ten minutes. A single configuration can run with
@@ -165,6 +171,7 @@ not evidence of unlimited uptime or arbitrary-hardware compatibility.
 - [Networking](docs/network.md), [Stage 10 report](docs/stage-10-report.md)
 - [HTTPS/TLS](docs/https.md), [Stage 11 report](docs/stage-11-report.md)
 - [Browser](docs/browser.md), [Stage 12 report](docs/stage-12-report.md)
+- [GET forms](docs/forms.md), [Stage 13 report](docs/stage-13-report.md)
 
 Previous stage reports and ISOs remain available. Font artwork is original;
 permissions are in docs/graphics-font-license.txt and docs/panic-font-license.txt.

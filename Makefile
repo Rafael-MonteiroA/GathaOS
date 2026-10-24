@@ -28,10 +28,10 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage12-browser$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage12-browser-page.iso
-DISK ?= dist/gathaos-stage12-disk.img
-RUNTIME_DISK ?= dist/gathaos-browser-disk.img
+ISO ?= dist/gathaos-stage13-forms$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage13-forms-page.iso
+DISK ?= dist/gathaos-stage13-disk.img
+RUNTIME_DISK ?= dist/gathaos-forms-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -55,7 +55,7 @@ OBJECTS += $(BUILD)/gui/wm/wm.o $(BUILD)/gui/wm/launcher.o
 all: iso
 $(addprefix $(BUILD)/,$(addsuffix .elf,$(APPS) demo widgets foundation)): $(BUILD)/libgatha/alloc.o
 $(BUILD)/terminal.elf: $(BUILD)/libgatha/network.o $(TLS)
-$(BUILD)/browser.elf: $(BUILD)/libgatha/network.o $(BUILD)/libgatha/url.o $(BUILD)/apps/browser/document.o $(TLS)
+$(BUILD)/browser.elf: $(BUILD)/libgatha/network.o $(BUILD)/libgatha/url.o $(BUILD)/apps/browser/document.o $(BUILD)/apps/browser/forms.o $(TLS)
 $(BUILD)/tlscheck.elf: $(BUILD)/user-start.o $(BUILD)/apps/tlscheck/main.o $(BUILD)/libgatha/memory.o $(BUILD)/libgatha/string.o $(BUILD)/libgatha/alloc.o $(TLS) libgatha/user.ld
 	$(LD) -m elf_i386 --fatal-warnings -T libgatha/user.ld -o $@ $(filter %.o,$^)
 $(BUILD)/tlscheck.gex: $(BUILD)/tlscheck.elf tools/gex.py
@@ -218,15 +218,16 @@ test: test-boot
 ifeq ($(DEBUG_FAULT),none)
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage12-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage13-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage12-browser-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage12-browser-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage12-browser-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage13-forms-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage13-forms-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage13-forms-gp.iso test-boot
 	$(PYTHON) tools/foundation_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/network_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/tls_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/browser_test.py "$(ISO)" "$(DISK)"
+	$(PYTHON) tools/forms_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/power_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/soak_test.py "$(ISO)" "$(DISK)"
 endif
@@ -235,4 +236,4 @@ clean:
 -include $(OBJECTS:.o=.d)
 -include $(BUILD)/libgatha/network.d $(BUILD)/apps/network/main.d
 -include $(TLS:.o=.d)
--include $(BUILD)/libgatha/url.d $(BUILD)/apps/browser/document.d $(BUILD)/apps/browser/main.d
+-include $(BUILD)/libgatha/url.d $(BUILD)/apps/browser/document.d $(BUILD)/apps/browser/forms.d $(BUILD)/apps/browser/main.d

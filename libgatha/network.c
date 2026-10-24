@@ -93,7 +93,7 @@ int g_http_fetch(const char *url,struct g_http_response *response,unsigned limit
     unsigned n=(unsigned)g_strlen(request);g_copy(request+n," HTTP/1.1\r\nHost: ",sizeof(request)-n);n=(unsigned)g_strlen(request);
     g_copy(request+n,host,sizeof(request)-n);n=(unsigned)g_strlen(request);
     if(port!=(secure?443u:80u)){request[n++]=':';g_decimal(request+n,(int)port);n=(unsigned)g_strlen(request);}
-    g_copy(request+n,"\r\nUser-Agent: GathaOS/12\r\nAccept: */*\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n",sizeof(request)-n);
+    g_copy(request+n,"\r\nUser-Agent: GathaOS/13\r\nAccept: */*\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n",sizeof(request)-n);
     n=(unsigned)g_strlen(request);
     for(unsigned sent=0;sent<n;) {
         r=s.tls?g_tls_send(s.tls,request+sent,n-sent):g_network(G_TCP_SEND,handle,request+sent,n-sent);

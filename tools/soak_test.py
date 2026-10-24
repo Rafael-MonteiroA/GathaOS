@@ -69,7 +69,11 @@ def run(iso,seed):
                         d.wait(lambda _:d.windows()[w['id']]['w']==480,'restore')
                         d.click(w['x']+w['w']-76,w['y']+14)
                         d.click(140,743);d.close(w)
-                        w=launch(d,9);d.close(w)
+                        w=launch(d,9);before=len(d.log());click(d,w,450,24)
+                        d.wait(lambda s:'BROWSER: title Try a form' in s[before:],'offline form page')
+                        before=len(d.log());d.tap('tab');d.type('soak check');d.tap('ret')
+                        d.wait(lambda s:'BROWSER: title Local form preview' in s[before:],'offline form submit')
+                        d.close(w)
                         d.move(4,4);time.sleep(2)
                         sample=health();samples.append(sample)
                         assert sample['windows']==0 and sample['free']==baseline['free'] and sample['heap']==baseline['heap'],(baseline,sample)
@@ -88,7 +92,7 @@ def run(iso,seed):
                 data=disk.read_bytes();validate(data)
                 assert read_file(data,'/Documents/Soak.txt')==b'GathaOS stability check'
                 assert 'PANIC' not in serial.read_text() and 'FAIL' not in serial.read_text()
-                (evidence/'result.json').write_text(json.dumps({'result':'PASS','elapsed_seconds':elapsed,'cycles':cycle,'baseline':baseline,'samples':samples,'checks':['real 600-second minimum','editor save/reopen pixels','calculator','overlapping windows','drag','maximize/restore','minimize/taskbar restore','reclaimed PMM/heap','zero event drops','bounded idle damage','disk validation'],'command':cmd},indent=2)+'\n')
+                (evidence/'result.json').write_text(json.dumps({'result':'PASS','elapsed_seconds':elapsed,'cycles':cycle,'baseline':baseline,'samples':samples,'checks':['real 600-second minimum','editor save/reopen pixels','calculator','browser form editing and local submission','overlapping windows','drag','maximize/restore','minimize/taskbar restore','reclaimed PMM/heap','zero event drops','bounded idle damage','disk validation'],'command':cmd},indent=2)+'\n')
             except Exception:
                 if serial.exists():
                     (evidence/'failure-tail.txt').write_text(serial.read_text()[-12000:])

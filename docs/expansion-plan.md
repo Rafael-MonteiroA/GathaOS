@@ -46,3 +46,11 @@ URL resolution, HTTP redirects, history, scrolling and cancellation, using the
 existing HTTP/TLS implementation. No imported browser code is allowed. Modern
 JavaScript/CSS web applications and broader TLS compatibility remain a later
 stage. The clean build, real boot, immutable artifacts and release workflow apply.
+
+On 2026-10-23 the user approved the next recommended update, **Stage 13: forms**.
+This adds bounded GET forms (text/search, hidden fields and submit buttons),
+keyboard focus/editing, required/maxlength checks, URL-encoded submission and
+real server/guest tests. Unsupported form features must not silently submit
+partial data. A clearly labelled offline demo makes the new controls discoverable.
+POST, passwords, uploads, cookies, CSS, JavaScript and full Google Search remain
+future work. The original-code and per-stage release workflow still apply.

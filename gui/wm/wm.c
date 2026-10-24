@@ -278,10 +278,12 @@ static void handle(const struct input_event *e) {
             if (mx>=16 && mx<244 && my>=height-370 && my<height-70) (void)desktop_launch((unsigned)(my-height+370)/30);
             menu=0; damage(0,height-430,260,430); return;
         }
+        int covered=0;
         for (int z=count-1;z>=0;--z) {
             int slot=order[z]; struct window *w=&windows[slot];
             if (w->minimized || mx<w->x || mx>=w->x+w->w+4 || my<w->y || my>=w->y+w->h+34) continue;
             raise_window(slot);
+            covered=1;
             if (my<w->y+32) {
                 int local=mx-w->x;
                 if (local>w->w-28) { queue(w,(struct g_event){.type=G_CLOSE}); log_window("close-request",w); }
@@ -292,7 +294,8 @@ static void handle(const struct input_event *e) {
             }
             break;
         }
-        if (mx<104 && my<116) { (void)desktop_launch(APP_FILES); return; }
+        /* A client click must not activate the desktop icon behind its window. */
+        if (!covered && mx<104 && my<116) { (void)desktop_launch(APP_FILES); return; }
     }
     if (focus>=0 && !windows[focus].minimized) {
         struct window *w=&windows[focus];

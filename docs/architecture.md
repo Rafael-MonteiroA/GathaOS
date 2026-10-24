@@ -90,3 +90,10 @@ the seed, serial markers, QMP input/registers/screenshots and independent disk
 parsing. A separate 600-second minimum soak checks normal application activity,
 window operations, post-close physical frames/heap and idle redraw bounds.
 A passing soak establishes that run's behavior, not indefinite stability.
+
+Stage 13 keeps bounded form/control metadata alongside the browser document.
+Original forms.c validates supported semantics and serializes GET queries; the
+UI binds text editors to that metadata, manages focus, and uses the existing
+HTTP/TLS fetch path. Unsupported forms fail before a request. No new syscall or
+kernel networking path is added. The offline demo uses explicit about:forms
+navigation and never turns a web response into privileged local content.
