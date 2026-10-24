@@ -23,5 +23,5 @@ SECTIONS
     }
     __kernel_phys_end = . - 0xc0000000;
     /DISCARD/ : { *(.comment) *(.eh_frame*) *(.note*) }
-    ASSERT(__kernel_phys_end < 0x400000, "Kernel exceeds bootstrap mapping")
+    ASSERT(__kernel_phys_end <= 0x1000000, "Kernel exceeds 16 MiB bootstrap mapping")
 }

@@ -7,10 +7,14 @@ org 0x8000
 %define CTRL 0x6200
 %define MODES 0x7000
 start:
+    cli
     xor ax, ax
     mov ds, ax
     mov es, ax
+    mov ss, ax
+    mov esp, 0x7c00
     cld
+    sti
     mov [boot_drive], dl
     call serial_init
     mov si, msg_stage2
@@ -22,23 +26,6 @@ start:
     mov dword [INFO], 0x47415448
     mov dword [INFO+4], 1
     mov dword [INFO+12], MAP
-
-    ; Stage 2 owns kernel loading; stage 1 only loads this 8 KiB stage.
-    mov ax, 0x1000
-    mov es, ax
-    mov ax, 17
-    mov cx, KERNEL_SECTORS
-    xor bx, bx
-.load:
-    call read_sector
-    jc disk_error
-    mov dx, es
-    add dx, 0x20
-    mov es, dx
-    inc ax
-    loop .load
-    xor ax, ax
-    mov es, ax
 
     xor ebx, ebx
     mov di, MAP
@@ -61,9 +48,11 @@ start:
     jae memory_error
     jmp .e820
 .memory_done:
+    call check_kernel_memory
     call enable_a20
     test ax, ax
     jz a20_error
+    call load_kernel
 
     mov dword [CTRL], 'VBE2'
     mov di, CTRL
@@ -274,11 +263,14 @@ msg_memory: db 'BOOT ERROR: E820', 13, 10, 0
 msg_a20: db 'BOOT ERROR: A20', 13, 10, 0
 msg_video: db 'BOOT ERROR: VBE', 13, 10, 0
 %include "boot/disk.inc"
+%include "boot/load.inc"
 align 8
 gdt:
     dq 0
     dq 0x00cf9a000000ffff
     dq 0x00cf92000000ffff
+    dq 0x00009a000000ffff
+    dq 0x000092000000ffff
 gdt_end:
 gdt_pointer:
     dw gdt_end-gdt-1
@@ -293,10 +285,6 @@ protected_entry:
     mov gs, ax
     mov esp, 0x90000
     cld
-    mov esi, 0x10000
-    mov edi, 0x100000
-    mov ecx, KERNEL_BYTES
-    rep movsb
     mov ebx, INFO
     mov eax, 0x100000
     jmp eax

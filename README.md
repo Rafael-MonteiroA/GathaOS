@@ -1,4 +1,4 @@
-# GathaOS - compressed web pages
+# GathaOS - extended kernel boot
 
 An original x86 operating system with its own BIOS bootloader, kernel, GathaFS
 filesystem, GEX executables, window manager and applications. Written in NASM
@@ -26,22 +26,22 @@ Build on WSL's native filesystem to avoid Windows/WSL clock
 skew. All guest code is freestanding. The host operating system is only tooling.
 `make` defaults to `make iso`; `make clean` removes build/ and preserves dist/.
 
-Outputs: **dist/gathaos-stage14-compression.iso** and the 32 MiB
-**dist/gathaos-stage14-disk.img** GathaFS v2 seed. Earlier artifacts remain.
-This update adds original gzip/deflate decoding; see docs/expansion-plan.md.
+Outputs: **dist/gathaos-stage15-large-boot.iso** and the 32 MiB
+**dist/gathaos-stage15-disk.img** GathaFS v2 seed. Earlier artifacts remain.
+This update expands the original loader to 15 MiB with CRC32 and RAM checks; see docs/boot-loader.md.
 Existing ISO releases are immutable; changed bytes require a new ISO filename.
-The writable dist/gathaos-compression-disk.img is created only if missing. Never replace a
+The writable dist/gathaos-large-boot-disk.img is created only if missing. Never replace a
 working disk with a seed: that would remove the user's documents.
 
 ## Run
 
 ```sh
-qemu-system-i386 -cpu max -rtc base=utc -cdrom dist/gathaos-stage14-compression.iso -drive file=dist/gathaos-compression-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -nic user,model=pcnet -serial stdio
+qemu-system-i386 -cpu max -rtc base=utc -cdrom dist/gathaos-stage15-large-boot.iso -drive file=dist/gathaos-large-boot-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -nic user,model=pcnet -serial stdio
 ```
 
 QEMU must be on PATH. On WSL, interactive graphics require WSLg or a display;
 tests are headless. A GathaFS IDE primary-master disk is required. For a fresh
-installation, copy the Stage 14 seed to a new working disk and use its path in
+installation, copy the Stage 15 seed to a new working disk and use its path in
 `-drive`. Keep existing working disks. Embedded apps work with older compatible
 GathaFS disks; /System/Apps on an older disk still contains its older executables.
 Ctrl+Alt releases QEMU's captured pointer/keyboard.
@@ -56,8 +56,9 @@ Right Ctrl+F leaves fullscreen. Shut down before changing the attached ISO.
 For networking, enable Adapter 1, NAT, cable connected, and select PCnet-PCI II
 (Am79C970A). VMware needs equivalent legacy BIOS/VGA/IDE/PCnet configuration.
 HTTPS additionally needs RDRAND exposed to the guest and a correct UTC RTC.
-Automated Stage 14 verification uses QEMU; Stage 14 has not been boot-tested in
-VirtualBox or VMware. Earlier Stage 8 was booted in VirtualBox with a visible GUI.
+Automated Stage 15 regression uses QEMU. The same ISO also passed a BIOS boot
+and desktop screenshot check in VirtualBox 7.2.8 with a temporary test disk.
+VMware has not been tested.
 
 ## Network commands
 
@@ -115,7 +116,7 @@ limited Stage 11 certificate/cipher support. See [browser.md](docs/browser.md).
 
 ## Verification
 
-See docs/stage-14-report.md for this release's measured results and limitations.
+See docs/stage-15-report.md for this release's measured results and limitations.
 Earlier stage reports remain available.
 
 `make test` runs actual QEMU TCG boots: 64/256/512 MiB, native keyboard sets 1/2,
@@ -126,7 +127,7 @@ validates the filesystem independently, and checks frame/heap reclamation and
 bounded idle redraw. Diagnostic animation/worker tasks exit after six seconds.
 Each normal boot still runs the memory, IRQ, input, filesystem and isolation tests.
 
-Evidence is under build/test-*; Stage 14 release copies are in dist/stage14-evidence.
+Evidence is under build/test-*; Stage 15 release copies are in dist/stage15-evidence.
 New foundation tests launch a large GEX, exercise heap OOM and fault cleanup,
 verify multi-megabyte files across restarts, and test legacy disk/GEX loading.
 Host tests inject disk/flush failure into the actual filesystem implementation.
@@ -143,6 +144,7 @@ production Terminal or Browser trust stores.
 Compression tests compare the guest decoder with independent host zlib, exercise
 mutations under ASan/UBSan and boot real Browser/Terminal requests, including
 corruption, decompression limits, cancellation and byte-exact saved files.
+Loader tests boot a real kernel with 6 MiB of patterned data and 5 MiB of BSS, a 15 MiB maximum payload, and corrupted/truncated/relocated images. See [boot-loader.md](docs/boot-loader.md).
 Serial logs, screenshots and JSON results identify exactly what was tested.
 The full suite takes well over ten minutes. A single configuration can run with
 `make test-boot RAM=64`. Fault builds require DEBUG_FAULT=page, readonly, div0 or
@@ -154,7 +156,7 @@ A release candidate for emulators, not a general-purpose PC replacement.
 No modern browser engine, USB, audio, package management or compatibility layers. Supports
 PS/2 three-byte mouse and ASCII input, no wheel, ABNT2 or Unicode. Eight windows,
 sixteen tasks, 512 MiB managed RAM, 16 MiB kernel heap; no SMP or FPU/SIMD context.
-The loader accepts a kernel payload up to 448 KiB. Software presentation has no
+The loader accepts up to 15 MiB; kernel plus BSS must fit below physical 16 MiB. Software presentation has no
 vertical synchronization. Theme settings are session-only. Editor capacity is
 256 KiB; Paint uses a fixed 256x160 canvas. Save edits before closing apps.
 GathaFS has 128 inodes, 4 MiB per file on v2 disks (192 KiB on v1), and no
@@ -180,6 +182,8 @@ not evidence of unlimited uptime or arbitrary-hardware compatibility.
 - [Browser](docs/browser.md), [Stage 12 report](docs/stage-12-report.md)
 - [GET forms](docs/forms.md), [Stage 13 report](docs/stage-13-report.md)
 - [Web compression](docs/compression.md), [Stage 14 report](docs/stage-14-report.md)
+
+- [Extended loader](docs/boot-loader.md), [Stage 15 report](docs/stage-15-report.md)
 
 Previous stage reports and ISOs remain available. Font artwork is original;
 permissions are in docs/graphics-font-license.txt and docs/panic-font-license.txt.

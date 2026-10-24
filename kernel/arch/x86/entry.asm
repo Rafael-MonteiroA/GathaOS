@@ -15,17 +15,23 @@ _start:
     sub ecx, edi
     xor eax, eax
     rep stosb
-    mov edi, bootstrap_table
+    mov edi, bootstrap_tables
     mov eax, 3
-    mov ecx, 1024
+    mov ecx, 4*1024
 .map:
     stosd
     add eax, 4096
     loop .map
-    mov eax, bootstrap_table
+    mov eax, bootstrap_tables
     or eax, 3
-    mov [bootstrap_directory], eax
-    mov [bootstrap_directory+768*4], eax
+    xor ecx, ecx
+.directories:
+    mov [bootstrap_directory+ecx*4], eax
+    mov [bootstrap_directory+(768*4)+ecx*4], eax
+    add eax, 4096
+    inc ecx
+    cmp ecx, 4
+    jb .directories
     mov eax, bootstrap_directory
     mov cr3, eax
     mov eax, cr0
@@ -53,5 +59,5 @@ higher_entry:
     jmp .halt
 section .boot.bss nobits align=4096
 bootstrap_directory: resd 1024
-bootstrap_table: resd 1024
+bootstrap_tables: resd 4*1024
 section .note.GNU-stack noalloc noexec nowrite progbits

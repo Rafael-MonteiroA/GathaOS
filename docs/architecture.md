@@ -4,13 +4,15 @@ The host toolchain produces an original NASM/C guest with no imported OS runtime
 
 ## Boot path
 
-1. BIOS selects the ISO's El Torito 1.44 MiB floppy-emulation entry. The original
-   512-byte stage loads the 8 KiB second stage with retrying INT 13h CHS reads.
-2. Stage two loads the raw kernel from sector 17 into physical 0x10000..0x7ffff
-   (448 KiB limit), verifies A20, collects up to 64 E820 records, selects VBE
-   1024x768x32 (800x600 fallback), and builds the versioned boot information.
-3. Protected mode copies the payload to 1 MiB. The bootstrap maps the first
-   4 MiB low/high, enables paging and CR0.WP, jumps high, clears BSS and calls C.
+1. BIOS selects the ISO's El Torito no-emulation entry and loads 2048 bytes.
+   The original 512-byte stage uses the mastered boot info table and retrying
+   INT 13h EDD reads to load the 8 KiB second stage.
+2. Stage two collects E820, checks RAM for the entire kernel including BSS,
+   verifies A20, reads up to 15 MiB through a 32 KiB bounce buffer and uses
+   protected-mode excursions to copy it to 1 MiB. CRC32 of the destination
+   must match. It selects VBE 1024x768x32 (800x600 fallback).
+3. The bootstrap maps the first 16 MiB low/high with four page tables, enables
+   paging and CR0.WP, jumps high, clears BSS and calls C.
 4. GDT/IDT, PMM and final paging replace the bootstrap environment. Low identity
    mappings are removed, text is read-only, kernel mappings supervisor-only.
 5. Heap and memory self-tests run. The framebuffer back buffer is allocated;
@@ -20,9 +22,10 @@ The host toolchain produces an original NASM/C guest with no imported OS runtime
    diagnostic user animations plus a kernel worker, which exit after six seconds.
    About opens on the desktop. Serial retains boot, fault and health telemetry.
 
-The boot floppy is raw fixed-layout code, not GathaFS. User data lives on the
+The boot image is raw fixed-layout code, not GathaFS. User data lives on the
 separate IDE disk. There is no ISO9660 reader. BIOS services end at the protected
-mode jump; subsequent I/O uses original port/MMIO drivers.
+mode handoff; subsequent I/O uses original port/MMIO drivers.
+See boot-loader.md for the Stage 15 CD layout, checks and bounds.
 
 ## Execution and memory
 

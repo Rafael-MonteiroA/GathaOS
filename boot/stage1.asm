@@ -1,29 +1,36 @@
 bits 16
 org 0x7c00
     jmp 0:start
+    times 8-($-$$) db 0
+; xorriso fills the boot info table at offsets 8..63 in the ISO copy.
+    times 64-($-$$) db 0
 start:
     cli
     xor ax, ax
     mov ds, ax
     mov es, ax
     mov ss, ax
-    mov sp, 0x7c00
+    mov esp, 0x7c00
     cld
     sti
     mov [boot_drive], dl
-    mov ax, 0x0800
-    mov es, ax
-    mov ax, 1
-    mov cx, 16
-    xor bx, bx
-.load:
-    call read_sector
+    mov bx, 0x55aa
+    mov ah, 0x41
+    int 0x13
     jc .error
-    mov dx, es
-    add dx, 0x20
-    mov es, dx
-    inc ax
-    loop .load
+    cmp bx, 0xaa55
+    jne .error
+    test cx, 1
+    jz .error
+    mov eax, [0x7c00+12]
+    cmp eax, 17
+    jb .error
+    inc eax
+    jz .error
+    mov cx, 4
+    mov bx, 0x8000
+    call read_sectors
+    jc .error
     mov dl, [boot_drive]
     jmp 0:0x8000
 .error:
@@ -41,7 +48,7 @@ start:
     hlt
     jmp .halt
 boot_drive: db 0
-message: db 'GathaOS: stage1 disk error', 0
+message: db 'GathaOS: CD EDD boot error', 0
 %include "boot/disk.inc"
 times 510-($-$$) db 0
 dw 0xaa55

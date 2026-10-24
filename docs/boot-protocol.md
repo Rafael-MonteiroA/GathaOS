@@ -39,3 +39,8 @@ its own static storage; the original E820 address remains physical, while the
 copied framebuffer address is changed to its virtual mapping after paging setup.
 No userspace ABI is implied. See `memory.md` for the transition and
 `interrupts.md` for the kernel's ring-0 exception-frame contract.
+
+Stage 15 preserves this version-1 handoff. The CD now uses no emulation with
+EDD reads, a 32 KiB bounce buffer and verified copies above 1 MiB. The first
+16 MiB are temporarily mapped by the kernel. See `boot-loader.md`; GEX and
+GathaFS formats are unchanged.

@@ -15,7 +15,7 @@ int app_main(unsigned argument) {
         ui_label(&u,28,116,"Welcome to your desktop.",UI_INK);
         ui_label(&u,28,150,"Write a note. Draw something. Make it yours.\nYour apps are waiting in the Start menu.",0x526477);
         ui_line(&u,28,216,u.width-28,216,0xd2dae3);
-        ui_label(&u,28,234,"Stage 14 / Web compression",UI_INK);
+        ui_label(&u,28,234,"Stage 15 / Extended boot",UI_INK);
         ui_label(&u,28,258,"Made from scratch, with care.",0x526477);
         if(ui_button(&u,u.width-132,250,104,"Close")){ui_close(&u);return 0;}
         ui_end(&u);

@@ -28,10 +28,10 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage14-compression$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage14-compression-page.iso
-DISK ?= dist/gathaos-stage14-disk.img
-RUNTIME_DISK ?= dist/gathaos-compression-disk.img
+ISO ?= dist/gathaos-stage15-large-boot$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage15-large-boot-page.iso
+DISK ?= dist/gathaos-stage15-disk.img
+RUNTIME_DISK ?= dist/gathaos-large-boot-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -197,7 +197,7 @@ $(BUILD)/kernel-size.inc: $(BUILD)/kernel.bin tools/mkboot.py
 	$(PYTHON) tools/mkboot.py sizes $< $@
 $(BUILD)/stage1.bin: boot/stage1.asm boot/disk.inc | $(BUILD)
 	$(NASM) -Wall -Werror -f bin $< -o $@
-$(BUILD)/stage2.bin: boot/stage2.asm boot/disk.inc $(BUILD)/kernel-size.inc
+$(BUILD)/stage2.bin: boot/stage2.asm boot/disk.inc boot/load.inc $(BUILD)/kernel-size.inc
 	$(NASM) -Wall -Werror -I$(BUILD)/ -f bin $< -o $@
 $(BUILD)/boot.img: $(BUILD)/stage1.bin $(BUILD)/stage2.bin $(BUILD)/kernel.bin tools/mkboot.py
 	$(PYTHON) tools/mkboot.py image $(BUILD) $@
@@ -219,13 +219,14 @@ test: test-boot
 	build/fs-native-test "$(DISK)"
 	$(PYTHON) tools/mkgathafs.py check build/native-full-disk.img
 ifeq ($(DEBUG_FAULT),none)
+	$(PYTHON) tools/boot_test.py "$(ISO)" "$(DISK)"
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage14-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage15-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage14-compression-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage14-compression-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage14-compression-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage15-large-boot-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage15-large-boot-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage15-large-boot-gp.iso test-boot
 	$(PYTHON) tools/foundation_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/network_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/tls_test.py "$(ISO)" "$(DISK)"

@@ -2,16 +2,17 @@
 
 ## Bootstrap and paging
 
-The bootloader still copies a raw image to physical 1 MiB and jumps there. Its
-entry assembly builds a temporary directory and one 4 KiB page table. The first
-4 MiB are mapped both identity and at 0xc0000000. CR0.PG and CR0.WP are enabled,
+The bootloader copies a raw image to physical 1 MiB and jumps there. Its
+entry assembly builds a temporary directory and four 4 KiB page tables. The first
+16 MiB are mapped both identity and at 0xc0000000. CR0.PG and CR0.WP are enabled,
 an absolute jump reaches the linked high text, and ESP moves to 0xc0090000.
 The high BSS is cleared before C. EBX is converted to the high alias of boot info.
 
 The linker gives the bootstrap a low VMA/LMA and the main kernel a VMA offset
 of 0xc0000000 from its physical LMA. `llvm-objcopy` packs by load addresses;
-there is no 3 GiB hole in the raw image. Link-time checks bound BSS below 4 MiB
-and the packer bounds the loaded payload at 448 KiB (expanded in Stage 4).
+there is no 3 GiB hole in the raw image. Since Stage 15, link-time checks bound
+the physical end of BSS to at most 16 MiB and the packer bounds the loaded
+payload at 15 MiB. E820 checks cover the whole reserved range before loading.
 
 The kernel copies boot info into owned static storage and installs high GDT/IDT
 addresses. It builds final supervisor-only 4 KiB page tables, then switches CR3.

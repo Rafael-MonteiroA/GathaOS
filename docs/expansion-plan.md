@@ -62,3 +62,11 @@ independent host vectors and real Browser/Terminal boot tests. This implements
 one part of the planned HTTP interoperability work. It does not introduce TLS
 algorithms, CSS, images, JavaScript or full Google Search. No imported decoder
 code is allowed. The clean-build, boot, immutable-artifact and stage workflow apply.
+
+On 2026-10-24 the user approved **Stage 15: larger kernel loading** after the
+remaining 8,068 bytes under the 448 KiB loader limit were explained. This stage
+replaces floppy emulation with an original no-emulation CD/EDD loader, checks
+kernel integrity and RAM bounds, expands initial paging, and verifies larger
+kernels in real QEMU boots. It preserves the kernel handoff, GathaFS, GEX,
+applications and earlier artifacts. No later TLS/rendering/JavaScript stage is
+included. The complete release workflow remains in effect.

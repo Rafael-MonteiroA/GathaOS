@@ -168,7 +168,7 @@ def main():
                     time.sleep(0.1)
                 else:
                     raise RuntimeError(f"Boot timed out; serial output:\n{output}")
-                for marker in ["BOOT: stage2", "GathaOS booting...", "BOOT: protected-mode A20=on",
+                for marker in ["BOOT: stage2", "BOOT: CD EDD kernel CRC32 PASS", "GathaOS booting...", "BOOT: protected-mode A20=on",
                                "GDT: kernel-owned CS=0x08 DS=0x10",
                                "IDT: 256 ring-0 interrupt gates installed",
                                "PIC: IRQ0-15 remapped to 32-47; only IRQ0 unmasked",

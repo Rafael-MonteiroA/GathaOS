@@ -1,44 +1,46 @@
-; Read one sector from an El Torito 1.44 MiB floppy-emulation device.
-; AX = logical sector, ES:BX = destination. Preserve all registers.
-read_sector:
-    pusha
-    mov [disk_lba], ax
+; BIOS EDD reads use 2048-byte logical sectors on the no-emulation CD.
+; EAX=LBA, CX=count (1..16), ES:BX=buffer within one 64 KiB boundary.
+; Preserve caller registers, return CF set after three failed attempts.
+read_sectors:
+    pushad
+    push ds
+    push es
+    mov [disk_packet+8], eax
+    mov [disk_packet+4], bx
+    mov [disk_packet+6], es
+    mov [disk_count], cx
     mov byte [disk_retries], 3
 .retry:
-    mov ax, [disk_lba]
-    xor dx, dx
-    mov cx, 18
-    div cx
-    inc dl
-    mov cl, dl
-    xor dx, dx
-    mov si, 2
-    div si
-    mov ch, al
-    mov dh, dl
+    mov ax, [disk_count]
+    mov [disk_packet+2], ax
+    mov si, disk_packet
     mov dl, [boot_drive]
-    mov ax, 0x0201
+    mov ah, 0x42
+    push ds
     push es
-    push bx
     int 0x13
-    pop bx
     pop es
+    pop ds
     jnc .done
     xor ax, ax
     mov dl, [boot_drive]
+    push ds
     push es
-    push bx
     int 0x13
-    pop bx
     pop es
+    pop ds
     dec byte [disk_retries]
     jnz .retry
-    popa
     stc
-    ret
 .done:
-    popa
-    clc
+    pop es
+    pop ds
+    popad
     ret
-disk_lba: dw 0
+align 4
+disk_packet:
+    db 16, 0
+    dw 0, 0, 0
+    dq 0
+disk_count: dw 0
 disk_retries: db 0
