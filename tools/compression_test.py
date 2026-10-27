@@ -97,7 +97,7 @@ def run(iso,seed):
             g.wait(lambda s:'HTTP: decoding gzip' in s[before:]);assert 'wget completed' not in g.d.log()[before:]
             g.d.close(g.window);time.sleep(3);assert g.health()==g.baseline
             g.window=launch(g.d,0);g.command_line(f'wget {prefix}/binary /Documents/again.bin','SHELL OUT: wget OK');files['/Documents/again.bin']=BINARY
-            assert all(h.get('Accept-Encoding')=='gzip, deflate' and h.get('User-Agent')=='GathaOS/15' for _,h in HTTP.seen)
+            assert all(h.get('Accept-Encoding')=='gzip, deflate' and h.get('User-Agent')=='GathaOS/16' for _,h in HTTP.seen)
             (g.root/'http-requests.json').write_text(json.dumps(HTTP.seen,indent=2)+'\n')
             g.finish(['gzip/zlib decode over length/chunked/close framing','gzip optional headers and concatenated members',
                       'case-insensitive x-gzip and identity','pixel-verified pages and compressed GET form response',

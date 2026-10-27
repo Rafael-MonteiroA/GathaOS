@@ -14,22 +14,63 @@ static int oid(struct der value,const uint8_t *p,unsigned n){return value.n==n &
 static int integer(struct der *in,struct der *out){if(take(in,2,out,0) || !out->n || (out->p[0]&128) || (out->n>1 && !out->p[0] && !(out->p[1]&128)))return -1;return 0;}
 static int small(struct der *in,unsigned *out){struct der value;if(integer(in,&value) || value.n>4)return -1;*out=0;for(unsigned i=0;i<value.n;++i)*out=(*out<<8)|value.p[i];return 0;}
 static int boolean(struct der *in,unsigned *out){struct der value;if(take(in,1,&value,0) || value.n!=1 || (value.p[0]!=0 && value.p[0]!=255))return -1;*out=value.p[0]!=0;return 0;}
-static unsigned signature_algorithm(struct der in) {
+static unsigned hash_algorithm(struct der in) {
+    static const uint8_t prefix[]={0x60,0x86,0x48,1,0x65,3,4,2};
+    struct der id,empty;
+    if(take(&in,6,&id,0) || id.n!=9 || memcmp(id.p,prefix,8))return 0;
+    if(in.n && (take(&in,5,&empty,0) || empty.n))return 0;if(in.n)return 0;
+    return id.p[8]==1?4:id.p[8]==2?5:id.p[8]==3?6:0;
+}
+/* SHA-1 defaults are outside this profile. Hash and MGF1 hash must be
+ * explicit SHA-2 and equal; salt defaults to 20 as required by RFC 4055. */
+static int pss_parameters(struct der in,unsigned *hash,unsigned *salt) {
+    static const uint8_t mgf1[]={0x2a,0x86,0x48,0x86,0xf7,0x0d,1,1,8};
+    struct der sequence;unsigned previous=0,mgf_hash=0;*hash=0;*salt=20;
+    if(take(&in,0x30,&sequence,0) || in.n)return -1;
+    while(sequence.n){
+        unsigned tag=sequence.p[0];struct der field,algorithm,id;
+        if(tag<0xa0 || tag>0xa3 || tag<=previous || take(&sequence,tag,&field,0))return -1;
+        previous=tag;
+        if(tag==0xa0){
+            if(take(&field,0x30,&algorithm,0) || field.n || !(*hash=hash_algorithm(algorithm)))return -1;
+        }else if(tag==0xa1){
+            if(take(&field,0x30,&algorithm,0) || field.n || take(&algorithm,6,&id,0) || !oid(id,mgf1,sizeof(mgf1)) ||
+               take(&algorithm,0x30,&field,0) || algorithm.n || !(mgf_hash=hash_algorithm(field)))return -1;
+        }else if(tag==0xa2){
+            if(small(&field,salt) || field.n || *salt>512)return -1;
+        }else{
+            /* RFC 4055 explicitly requires accepting present trailer 1. */
+            unsigned trailer;if(small(&field,&trailer) || field.n || trailer!=1)return -1;
+        }
+    }
+    return !*hash || mgf_hash!=*hash?-1:0;
+}
+static unsigned signature_algorithm(struct der in,struct certificate *c) {
     static const uint8_t rsa_oid[]={0x2a,0x86,0x48,0x86,0xf7,0x0d,1,1};struct der id,empty;
     if(take(&in,6,&id,0) || id.n!=9 || memcmp(id.p,rsa_oid,8))return 0;
+    if(id.p[8]==10){
+        c->pss=1;
+        return pss_parameters(in,&c->hash,&c->salt_size)?0:c->hash;
+    }
     if(in.n && (take(&in,5,&empty,0) || empty.n))return 0;if(in.n)return 0;
     return id.p[8]==11?4:id.p[8]==12?5:id.p[8]==13?6:0;
 }
-static int public_key(struct der in,struct rsa_key *key) {
-    static const uint8_t rsa_oid[]={0x2a,0x86,0x48,0x86,0xf7,0x0d,1,1,1};struct der algorithm,id,empty,bits,sequence,mod;
-    if(take(&in,0x30,&algorithm,0) || take(&algorithm,6,&id,0) || !oid(id,rsa_oid,sizeof(rsa_oid)))return -1;
-    if(algorithm.n && (take(&algorithm,5,&empty,0) || empty.n))return -1;if(algorithm.n)return -1;
+static int public_key(struct der in,struct public_key *key) {
+    static const uint8_t rsa_oid[]={0x2a,0x86,0x48,0x86,0xf7,0x0d,1,1};struct der algorithm,id,empty,bits,sequence,mod;
+    if(take(&in,0x30,&algorithm,0) || take(&algorithm,6,&id,0) || id.n!=9 || memcmp(id.p,rsa_oid,8))return -1;
+    if(id.p[8]==10){
+        key->pss_only=1;
+        if(algorithm.n && pss_parameters(algorithm,&key->pss_hash,&key->pss_min_salt))return -1;
+    }else{
+        if(id.p[8]!=1)return -1;
+        if(algorithm.n && (take(&algorithm,5,&empty,0) || empty.n))return -1;if(algorithm.n)return -1;
+    }
     if(take(&in,3,&bits,0) || in.n || !bits.n || bits.p[0])return -1;++bits.p;--bits.n;
     if(take(&bits,0x30,&sequence,0) || bits.n || integer(&sequence,&mod))return -1;
     if(mod.n && !mod.p[0]){++mod.p;--mod.n;}
     if((mod.n!=256 && mod.n!=384 && mod.n!=512) || !(mod.p[0]&128) || !(mod.p[mod.n-1]&1))return -1;
     unsigned exponent;if(small(&sequence,&exponent) || sequence.n || exponent!=65537)return -1;
-    memcpy(key->modulus,mod.p,mod.n);key->size=mod.n;key->exponent=exponent;return 0;
+    memcpy(key->rsa.modulus,mod.p,mod.n);key->rsa.size=mod.n;key->rsa.exponent=exponent;return 0;
 }
 static int decimal(const uint8_t *p,unsigned n,unsigned *out){*out=0;for(unsigned i=0;i<n;++i){if(p[i]<'0' || p[i]>'9')return -1;*out=*out*10+p[i]-'0';}return 0;}
 static int date(struct der *in,uint32_t *result) {
@@ -66,7 +107,7 @@ static int extensions(struct der in,struct certificate *c) {
 int x509_parse(struct der data,struct certificate *c) {
     memset(c,0,sizeof(*c));c->encoded=data;c->path_limit=UINT32_MAX;struct der outer,tbs,algorithm,inner,bits,version,serial,validity,key,ext;
     if(data.n>16384 || take(&data,0x30,&outer,0) || data.n || take(&outer,0x30,&tbs,&c->tbs) || take(&outer,0x30,&algorithm,0))return -1;
-    c->hash=signature_algorithm(algorithm);if(!c->hash || take(&outer,3,&bits,0) || outer.n || bits.n<2 || bits.p[0])return -1;c->signature=(struct der){bits.p+1,bits.n-1};
+    c->hash=signature_algorithm(algorithm,c);if(!c->hash || take(&outer,3,&bits,0) || outer.n || bits.n<2 || bits.p[0])return -1;c->signature=(struct der){bits.p+1,bits.n-1};
     unsigned v;if(take(&tbs,0xa0,&version,0) || small(&version,&v) || version.n || v!=2 || integer(&tbs,&serial) || serial.n>20)return -1;
     if(take(&tbs,0x30,&inner,0) || !same(inner,algorithm) || take(&tbs,0x30,0,&c->issuer) || take(&tbs,0x30,&validity,0))return -1;
     if(date(&validity,&c->before) || date(&validity,&c->after) || validity.n || c->before>c->after)return -1;
@@ -93,16 +134,21 @@ int x509_name(const struct certificate *c,const char *host) {
     }
     return match?0:-1;
 }
+int x509_signature(const struct public_key *key,unsigned pss,unsigned hash,unsigned salt_size,const uint8_t *digest,struct der signature) {
+    if(key->pss_only && (!pss || (key->pss_hash && (hash!=key->pss_hash || salt_size<key->pss_min_salt))))return -1;
+    return pss?rsa_pss_verify(&key->rsa,hash,salt_size,digest,signature.p,signature.n):
+               rsa_verify(&key->rsa,hash,digest,signature.p,signature.n);
+}
 static int signed_by(const struct certificate *child,const struct certificate *parent) {
     if(!same(child->issuer,parent->subject))return -1;uint8_t digest[64];if(!crypto_hash(child->hash,child->tbs.p,child->tbs.n,digest))return -1;
-    return rsa_verify(&parent->key,child->hash,digest,child->signature.p,child->signature.n);
+    return x509_signature(&parent->key,child->pss,child->hash,child->salt_size,digest,child->signature);
 }
 static int valid(const struct certificate *c,uint32_t now,int ca,unsigned depth) {
     if(now<c->before || now>c->after || (c->has_eku && !c->server))return -1;
     if(ca)return !c->ca || !c->has_usage || !(c->usage&4) || c->path_limit<depth?-1:0;
     return c->ca || (c->has_usage && !(c->usage&128))?-1:0;
 }
-int x509_chain(const struct der *chain,unsigned count,const struct der *roots,unsigned rn,const char *host,uint32_t now,struct rsa_key *leaf) {
+int x509_chain(const struct der *chain,unsigned count,const struct der *roots,unsigned rn,const char *host,uint32_t now,struct public_key *leaf) {
     if(!count || count>6 || !rn || rn>8)return -129;
     struct certificate current,parent;
     if(x509_parse(chain[0],&current) || valid(&current,now,0,0) || x509_name(&current,host))return -129;*leaf=current.key;

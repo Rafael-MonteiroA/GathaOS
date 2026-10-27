@@ -12,7 +12,7 @@ struct tls {
     struct aes128 read_key,write_key;
     uint8_t read_iv[4],write_iv[4],random[64],secret[32],master[48];
     struct sha256 transcript;
-    struct rsa_key leaf;
+    struct public_key leaf;
     uint8_t rx[RECORD+24],tx[RECORD+29],message[HANDSHAKE+4];
 };
 static unsigned be16(const uint8_t *p){return (unsigned)p[0]<<8|p[1];}
@@ -74,7 +74,8 @@ static int client_hello(struct tls *t,const char *host) {
     static const uint8_t options[]={
         0,10,0,4,0,2,0,29, /* X25519 */
         0,11,0,2,1,0, /* uncompressed EC points */
-        0,13,0,8,0,6,4,1,5,1,6,1, /* RSA PKCS1 SHA256/384/512 */
+        0,13,0,20,0,18,8,4,8,5,8,6,8,9,8,10,8,11,4,1,5,1,6,1,
+        /* RSA-PSS RSAE/PSS and PKCS1, each with SHA256/384/512 */
         0,23,0,0, /* mandatory extended master secret */
         255,1,0,1,0, /* initial secure renegotiation binding */
         0,16,0,11,0,9,8,'h','t','t','p','/','1','.','1'};
@@ -104,10 +105,17 @@ static int certificates(struct tls *t,const char *host,const struct der *roots,u
 }
 static int exchange(struct tls *t) {
     int r=read_handshake(t,12,1);if(r<0)return r;uint8_t *p=t->message+4;unsigned n=(unsigned)r;
-    if(n<40 || p[0]!=3 || be16(p+1)!=29 || p[3]!=32 || p[37]!=1 || p[36]<4 || p[36]>6 || be16(p+38)!=n-40)return -74;
+    if(n<40 || p[0]!=3 || be16(p+1)!=29 || p[3]!=32 || be16(p+38)!=n-40)return -74;
+    unsigned hash,pss=0,scheme=be16(p+36);
+    if(p[37]==1 && p[36]>=4 && p[36]<=6){hash=p[36];if(t->leaf.pss_only)return -129;}
+    else if(scheme>=0x0804 && scheme<=0x0806){hash=scheme-0x0800;pss=1;if(t->leaf.pss_only)return -129;}
+    else if(scheme>=0x0809 && scheme<=0x080b){hash=scheme-0x0805;pss=1;if(!t->leaf.pss_only)return -129;}
+    else return -74;
     uint8_t signed_data[100],digest[64],peer[32],public_key[32],shared[32],base[32]={9};
-    memcpy(signed_data,t->random,64);memcpy(signed_data+64,p,36);crypto_hash(p[36],signed_data,100,digest);
-    if(rsa_verify(&t->leaf,p[36],digest,p+40,n-40))return -129;memcpy(peer,p+4,32);
+    memcpy(signed_data,t->random,64);memcpy(signed_data+64,p,36);unsigned hn=crypto_hash(hash,signed_data,100,digest);
+    if(x509_signature(&t->leaf,pss,hash,hn,digest,(struct der){p+40,n-40}))return -129;
+    g_puts(pss?(t->leaf.pss_only?"TLS: RSA-PSS restricted key verified\n":"TLS: RSA-PSS RSAE verified\n"):"TLS: RSA PKCS1 verified\n");
+    memcpy(peer,p+4,32);
     r=read_handshake(t,14,1);if(r<0)return r;if(r || t->rx_at!=t->rx_size)return -74;
     if(x25519(public_key,t->secret,base) || x25519(shared,t->secret,peer)){crypto_wipe(shared,32);return -74;}
     crypto_wipe(t->secret,32);t->message[4]=32;memcpy(t->message+5,public_key,32);r=send_handshake(t,16,33);

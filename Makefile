@@ -28,10 +28,10 @@ else
 $(error DEBUG_FAULT must be none, div0, gp, page or readonly)
 endif
 BUILD := build/$(DEBUG_FAULT)$(INPUT_SUFFIX)
-ISO ?= dist/gathaos-stage15-large-boot$(SUFFIX)$(INPUT_SUFFIX).iso
-PAGE_ISO ?= build/gathaos-stage15-large-boot-page.iso
-DISK ?= dist/gathaos-stage15-disk.img
-RUNTIME_DISK ?= dist/gathaos-large-boot-disk.img
+ISO ?= dist/gathaos-stage16-rsa-pss$(SUFFIX)$(INPUT_SUFFIX).iso
+PAGE_ISO ?= build/gathaos-stage16-rsa-pss-page.iso
+DISK ?= dist/gathaos-stage16-disk.img
+RUNTIME_DISK ?= dist/gathaos-rsa-pss-disk.img
 RAM ?= 256
 ifneq ($(filter $(PS2_SET),1 2),$(PS2_SET))
 $(error PS2_SET must be 1 or 2)
@@ -213,7 +213,9 @@ test: test-boot
 	$(PYTHON) tools/inflate_test.py
 	$(PYTHON) tools/browser_native_test.py
 	$(PYTHON) tools/crypto_test.py
+	$(PYTHON) tools/pss_test.py
 	$(PYTHON) tools/x509_test.py
+	$(PYTHON) tools/pss_x509_test.py
 	$(PYTHON) tools/test_gathafs.py
 	clang -std=c11 -Wall -Wextra -Werror -I. -Ikernel tools/fs_native_test.c kernel/fs/gathafs.c libgatha/string.c -o build/fs-native-test
 	build/fs-native-test "$(DISK)"
@@ -222,14 +224,15 @@ ifeq ($(DEBUG_FAULT),none)
 	$(PYTHON) tools/boot_test.py "$(ISO)" "$(DISK)"
 	$(MAKE) RAM=64 test-boot
 	$(MAKE) RAM=512 test-boot
-	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage15-set1.iso test-boot
+	$(MAKE) PS2_SET=1 BUILD=build/set1 ISO=build/gathaos-stage16-set1.iso test-boot
 	$(MAKE) DEBUG_FAULT=page ISO="$(PAGE_ISO)" test-boot
-	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage15-large-boot-readonly.iso test-boot
-	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage15-large-boot-div0.iso test-boot
-	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage15-large-boot-gp.iso test-boot
+	$(MAKE) DEBUG_FAULT=readonly ISO=build/gathaos-stage16-rsa-pss-readonly.iso test-boot
+	$(MAKE) DEBUG_FAULT=div0 ISO=build/gathaos-stage16-rsa-pss-div0.iso test-boot
+	$(MAKE) DEBUG_FAULT=gp ISO=build/gathaos-stage16-rsa-pss-gp.iso test-boot
 	$(PYTHON) tools/foundation_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/network_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/tls_test.py "$(ISO)" "$(DISK)"
+	$(PYTHON) tools/pss_tls_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/browser_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/forms_test.py "$(ISO)" "$(DISK)"
 	$(PYTHON) tools/compression_test.py "$(ISO)" "$(DISK)"

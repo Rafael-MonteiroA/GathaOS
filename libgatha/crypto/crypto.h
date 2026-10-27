@@ -22,4 +22,5 @@ void gcm_encrypt(const struct aes128 *a,const uint8_t nonce[12],const void *aad,
 int gcm_decrypt(const struct aes128 *a,const uint8_t nonce[12],const void *aad,unsigned an,uint8_t *data,unsigned n,const uint8_t tag[16]);
 struct rsa_key { uint8_t modulus[512]; unsigned size; uint32_t exponent; };
 int rsa_verify(const struct rsa_key *key,unsigned hash,const uint8_t *digest,const uint8_t *sig,unsigned n);
+int rsa_pss_verify(const struct rsa_key *key,unsigned hash,unsigned salt_size,const uint8_t *digest,const uint8_t *sig,unsigned n);
 #endif

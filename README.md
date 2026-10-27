@@ -1,4 +1,4 @@
-# GathaOS - extended kernel boot
+# GathaOS - RSA-PSS HTTPS
 
 An original x86 operating system with its own BIOS bootloader, kernel, GathaFS
 filesystem, GEX executables, window manager and applications. Written in NASM
@@ -26,22 +26,22 @@ Build on WSL's native filesystem to avoid Windows/WSL clock
 skew. All guest code is freestanding. The host operating system is only tooling.
 `make` defaults to `make iso`; `make clean` removes build/ and preserves dist/.
 
-Outputs: **dist/gathaos-stage15-large-boot.iso** and the 32 MiB
-**dist/gathaos-stage15-disk.img** GathaFS v2 seed. Earlier artifacts remain.
-This update expands the original loader to 15 MiB with CRC32 and RAM checks; see docs/boot-loader.md.
+Outputs: **dist/gathaos-stage16-rsa-pss.iso** and the 32 MiB
+**dist/gathaos-stage16-disk.img** GathaFS v2 seed. Earlier artifacts remain.
+This update adds RSA-PSS signatures and constrained RSA keys for HTTPS; see docs/rsa-pss.md.
 Existing ISO releases are immutable; changed bytes require a new ISO filename.
-The writable dist/gathaos-large-boot-disk.img is created only if missing. Never replace a
+The writable dist/gathaos-rsa-pss-disk.img is created only if missing. Never replace a
 working disk with a seed: that would remove the user's documents.
 
 ## Run
 
 ```sh
-qemu-system-i386 -cpu max -rtc base=utc -cdrom dist/gathaos-stage15-large-boot.iso -drive file=dist/gathaos-large-boot-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -nic user,model=pcnet -serial stdio
+qemu-system-i386 -cpu max -rtc base=utc -cdrom dist/gathaos-stage16-rsa-pss.iso -drive file=dist/gathaos-rsa-pss-disk.img,format=raw,if=ide,index=0 -boot d -m 256M -vga std -nic user,model=pcnet -serial stdio
 ```
 
 QEMU must be on PATH. On WSL, interactive graphics require WSLg or a display;
 tests are headless. A GathaFS IDE primary-master disk is required. For a fresh
-installation, copy the Stage 15 seed to a new working disk and use its path in
+installation, copy the Stage 16 seed to a new working disk and use its path in
 `-drive`. Keep existing working disks. Embedded apps work with older compatible
 GathaFS disks; /System/Apps on an older disk still contains its older executables.
 Ctrl+Alt releases QEMU's captured pointer/keyboard.
@@ -56,7 +56,7 @@ Right Ctrl+F leaves fullscreen. Shut down before changing the attached ISO.
 For networking, enable Adapter 1, NAT, cable connected, and select PCnet-PCI II
 (Am79C970A). VMware needs equivalent legacy BIOS/VGA/IDE/PCnet configuration.
 HTTPS additionally needs RDRAND exposed to the guest and a correct UTC RTC.
-Automated Stage 15 regression uses QEMU. The same ISO also passed a BIOS boot
+Automated Stage 16 regression uses QEMU. Stage 15 also passed a BIOS boot
 and desktop screenshot check in VirtualBox 7.2.8 with a temporary test disk.
 VMware has not been tested.
 
@@ -73,7 +73,7 @@ cat /Documents/Google.txt
 
 Wait for DHCP to report connected. Escape cancels a download. HTTP/HTTPS downloads
 up to 4 MiB preserve an existing destination on failure. TLS 1.2 supports X25519,
-AES-128-GCM and selected RSA certificate chains, with domain/date/signature checks.
+AES-128-GCM and selected RSA PKCS1/PSS certificate chains, with domain/date/signature checks.
 Browser renders basic HTML and text with clickable links, navigation and scrolling.
 HTTPS access to a file on Google does not mean it can render the search interface. See [network.md](docs/network.md) and
 [https.md](docs/https.md) for the supported profile and limitations, including the
@@ -97,7 +97,7 @@ HTTP compatibility; it does not add a modern page renderer. See [compression.md]
 
 Only basic HTML and plain text are supported. There are no CSS layouts,
 JavaScript, images, cookies or Google search interface. HTTPS retains the
-limited Stage 11 certificate/cipher support. See [browser.md](docs/browser.md).
+limited TLS 1.2 certificate/cipher profile, extended with RSA-PSS in Stage 16. See [browser.md](docs/browser.md).
 
 ## Everyday controls
 
@@ -116,7 +116,7 @@ limited Stage 11 certificate/cipher support. See [browser.md](docs/browser.md).
 
 ## Verification
 
-See docs/stage-15-report.md for this release's measured results and limitations.
+See docs/stage-16-report.md for this release's measured results and limitations.
 Earlier stage reports remain available.
 
 `make test` runs actual QEMU TCG boots: 64/256/512 MiB, native keyboard sets 1/2,
@@ -127,7 +127,7 @@ validates the filesystem independently, and checks frame/heap reclamation and
 bounded idle redraw. Diagnostic animation/worker tasks exit after six seconds.
 Each normal boot still runs the memory, IRQ, input, filesystem and isolation tests.
 
-Evidence is under build/test-*; Stage 15 release copies are in dist/stage15-evidence.
+Evidence is under build/test-*; Stage 16 release copies are in dist/stage16-evidence.
 New foundation tests launch a large GEX, exercise heap OOM and fault cleanup,
 verify multi-megabyte files across restarts, and test legacy disk/GEX loading.
 Host tests inject disk/flush failure into the actual filesystem implementation.
@@ -145,6 +145,7 @@ Compression tests compare the guest decoder with independent host zlib, exercise
 mutations under ASan/UBSan and boot real Browser/Terminal requests, including
 corruption, decompression limits, cancellation and byte-exact saved files.
 Loader tests boot a real kernel with 6 MiB of patterned data and 5 MiB of BSS, a 15 MiB maximum payload, and corrupted/truncated/relocated images. See [boot-loader.md](docs/boot-loader.md).
+RSA-PSS tests add 675 independent vectors, sanitizer mutations, certificate/key restrictions and six forced TLS schemes with signature tampering checks. See [rsa-pss.md](docs/rsa-pss.md).
 Serial logs, screenshots and JSON results identify exactly what was tested.
 The full suite takes well over ten minutes. A single configuration can run with
 `make test-boot RAM=64`. Fault builds require DEBUG_FAULT=page, readonly, div0 or
@@ -184,6 +185,8 @@ not evidence of unlimited uptime or arbitrary-hardware compatibility.
 - [Web compression](docs/compression.md), [Stage 14 report](docs/stage-14-report.md)
 
 - [Extended loader](docs/boot-loader.md), [Stage 15 report](docs/stage-15-report.md)
+
+- [RSA-PSS HTTPS](docs/rsa-pss.md), [Stage 16 report](docs/stage-16-report.md)
 
 Previous stage reports and ISOs remain available. Font artwork is original;
 permissions are in docs/graphics-font-license.txt and docs/panic-font-license.txt.

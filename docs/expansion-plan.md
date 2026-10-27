@@ -70,3 +70,12 @@ kernel integrity and RAM bounds, expands initial paging, and verifies larger
 kernels in real QEMU boots. It preserves the kernel handoff, GathaFS, GEX,
 applications and earlier artifacts. No later TLS/rendering/JavaScript stage is
 included. The complete release workflow remains in effect.
+
+On 2026-10-24 the user confirmed Stage 15 worked and authorized the next update,
+**Stage 16: RSA-PSS HTTPS compatibility**. The bounded profile adds original
+RSA-PSS signature verification, SHA-256/384/512 parameter validation, RSAE and
+PSS-only public keys, and six TLS 1.2 signature schemes. Independent host tests,
+forced OpenSSL interoperability, malformed input, and real guest regression are
+required. The existing trust anchors, TLS version/cipher/key-exchange profile
+and browser renderer remain in scope as regressions. This does not start
+ECDSA, TLS 1.3, CSS, images or JavaScript. Original-code and stage workflow rules apply.

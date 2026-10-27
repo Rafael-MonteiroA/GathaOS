@@ -4,6 +4,9 @@ Stage 12 reuses this TLS profile in the graphical Browser; see browser.md.
 The description below records the Stage 11 downloader and cryptographic limits.
 Stage 14 adds HTTP content decompression above the unchanged TLS record layer;
 see compression.md. Historical uncompressed-body limits below describe Stage 11.
+Stage 16 adds RSA-PSS signatures and PSS-only key restrictions; see
+[rsa-pss.md](rsa-pss.md) for the current extension. The historical Stage 11
+algorithm list below is preserved to distinguish that earlier release.
 
 Terminal accepts `wget https://host/path destination` using original freestanding
 C cryptography and TLS, over the Stage 10 TCP driver. HTTP remains supported.

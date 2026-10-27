@@ -134,7 +134,7 @@ def nat(iso,seed):
             before=len(g.d.log());g.d.type(f'wget {prefix}/slow /Documents/length.bin\n');time.sleep(.7);g.d.tap('esc')
             g.wait(lambda s:'SHELL OUT: wget: Cancelled' in s[before:]);print('NETWORK cancellation PASS',flush=True)
             g.command_line(f'wget {prefix}/length /Documents/again.bin','SHELL OUT: wget OK');files['/Documents/again.bin']=PAYLOAD
-            assert all(headers.get('User-Agent')=='GathaOS/15' for _,headers in HTTP.seen)
+            assert all(headers.get('User-Agent')=='GathaOS/16' for _,headers in HTTP.seen)
             g.finish(['DHCP NAT','ARP','TCP checksums/flow control','HTTP content-length/chunks/close/empty','1 MiB binary download',
                       'malformed/truncated/oversized/unsupported responses preserve destination','unsupported scheme rejection','refused connection',
                       'Escape cancellation','repeated connections','process memory reclamation','independent disk bytes'],files)
@@ -149,7 +149,7 @@ def offline(iso,seed):
 
 def live(iso,seed):
     url='http://example.com/'
-    request=urllib.request.Request(url,headers={'User-Agent':'GathaOS/15','Accept':'*/*','Accept-Encoding':'identity'})
+    request=urllib.request.Request(url,headers={'User-Agent':'GathaOS/16','Accept':'*/*','Accept-Encoding':'identity'})
     with urllib.request.urlopen(request,timeout=30) as response:expected=response.read()
     assert b'Example Domain' in expected
     with contextlib.closing(Guest(iso,seed,'live',['-nic','user,model=pcnet'])) as g:

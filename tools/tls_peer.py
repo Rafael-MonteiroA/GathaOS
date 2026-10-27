@@ -78,6 +78,26 @@ class Proxy:
                 while True:
                     header=exact(upstream,5);data=exact(upstream,int.from_bytes(header[3:5],'big'));kind=header[0]
                     if kind==20:encrypted=True
+                    if kind==22 and not encrypted and (self.fault=='inspect' or self.fault.startswith('pss-')):
+                        at=0
+                        while at+4<=len(data):
+                            size=int.from_bytes(data[at+1:at+4],'big')
+                            if at+4+size>len(data):break
+                            if data[at]==12:
+                                assert size>=40 and data[at+4:at+8]==b'\x03\x00\x1d\x20'
+                                pos=at+4+36;scheme=int.from_bytes(data[pos:pos+2],'big')
+                                self.events.append(('signature-scheme',scheme))
+                                if self.fault!='inspect' and not changed:
+                                    changed=True;self.events.append(self.fault);patched=bytearray(data)
+                                    if self.fault=='pss-signature':patched[at+4+size-1]^=1
+                                    elif self.fault=='pss-key-kind':patched[pos:pos+2]=(0x0809 if scheme==0x0804 else 0x0804).to_bytes(2,'big')
+                                    elif self.fault=='pss-unoffered':patched[pos:pos+2]=b'\x08\x0c'
+                                    elif self.fault=='pss-hash':patched[pos:pos+2]=b'\x08\x05'
+                                    elif self.fault=='pss-pkcs-kind':patched[pos:pos+2]=b'\x04\x01'
+                                    elif self.fault=='pss-length':patched[pos+3]^=1
+                                    else:raise AssertionError(self.fault)
+                                    data=bytes(patched)
+                            at+=4+size
                     target=(self.fault=='finished' and encrypted and kind==22) or (self.fault in ('tag','truncate','replay') and kind==23)
                     if not changed and target:
                         changed=True;self.events.append(self.fault)

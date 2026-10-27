@@ -107,7 +107,7 @@ def test(iso,seed):
             count=len(HTTP.seen);open_url(g,'about:forms');g.d.tap('tab');g.d.type('local demo')
             submit(g,lambda:g.d.tap('ret'));page_pixels(g,'Local form preview','form-offline-preview');assert len(HTTP.seen)==count
             toolbar(g,40,'BROWSER: loaded');page_pixels(g,'Offline form demo - no data is sent to the internet.','form-offline-demo');assert len(g.d.windows())==1
-            assert all(headers.get('User-Agent')=='GathaOS/15' for _,headers in HTTP.seen)
+            assert all(headers.get('User-Agent')=='GathaOS/16' for _,headers in HTTP.seen)
             assert not any(path.startswith('/forbidden') for path,_ in HTTP.seen)
             (g.root/'http-requests.json').write_text(json.dumps(HTTP.seen,indent=2)+'\n')
             g.finish(['real GET query bytes: spaces/reserved characters, hidden duplicate names, selected submit',

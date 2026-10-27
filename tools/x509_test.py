@@ -14,7 +14,7 @@ def main():
         data=[(folder/(n+'.der')).read_bytes() for n in names]
         if mutation:data[0]=data[0][:-1]+bytes([data[0][-1]^1])
         buffers=[c.create_string_buffer(d) for d in data];chain=(DER*len(data))(*[DER(c.addressof(b),len(d)) for b,d in zip(buffers,data)])
-        trust=(folder/(root+'.der')).read_bytes();anchor=c.create_string_buffer(trust);anchors=(DER*1)(DER(c.addressof(anchor),len(trust)));out=c.create_string_buffer(520)
+        trust=(folder/(root+'.der')).read_bytes();anchor=c.create_string_buffer(trust);anchors=(DER*1)(DER(c.addressof(anchor),len(trust)));out=c.create_string_buffer(1024)
         return lib.x509_chain(chain,len(data),anchors,1,host,c.c_uint32(now),out)
     for host in [b'localhost',b'LOCALHOST',b'10.0.2.2',b'127.0.0.1',b'one.unit.test']:
         assert verify(['good','intermediate'],host)==0,host
